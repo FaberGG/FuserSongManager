@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FuserSongManager.Core/FuserSongManager.Core.csproj" />
+    <Project Path="src/FuserSongManager.Infrastructure/FuserSongManager.Infrastructure.csproj" />
+    <Project Path="src/FuserSongManager.Tools/FuserSongManager.Tools.csproj" />
+    <Project Path="src/FuserSongManager.UI/FuserSongManager.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FuserSongManager.Core.Tests/FuserSongManager.Core.Tests.csproj" />
+  </Folder>
+</Solution>
