@@ -102,12 +102,12 @@ Los requisitos de paridad salen del código de la v1 que se revisó (`loader.py`
 | RF-EST-04 | Antes de habilitar una canción, el sistema debe verificar que exista su `.sig`. Si falta, la canción permanece deshabilitada y se informa al usuario con el nombre del archivo faltante. | Debe | Confirmado |
 | RF-EST-05 | Si un movimiento de archivos falla a medias, el sistema debe revertirlo para no dejar un `.pak` sin su `.sig` ni al revés. | Debe | Confirmado |
 | RF-EST-06 | Si ya existe un archivo con el mismo nombre en el destino, el sistema no debe sobrescribirlo sin avisar. | Debe | Confirmado |
-| RF-EST-07 | Al cambiar el estado de una canción, el sistema debe borrar `customSongsUnlocked_P.pak` y su `.sig` si existen, para que el juego los regenere. | Debería | Por validar |
-| RF-EST-08 | El sistema debe avisar o impedir la operación si *Fuser* está en ejecución. | Debería | Por validar |
+| RF-EST-07 | Al cambiar el estado de una canción, el sistema debe borrar `customSongsUnlocked_P.pak` y su `.sig` si existen, para que el juego los regenere. | Debería | Confirmado (la v1 lo hace al refrescar y al lanzar) |
+| RF-EST-08 | El sistema debe avisar o impedir la operación si *Fuser* está en ejecución. | Debería | Confirmado (la v1 lo impide con `tasklist`) |
 
 **Notas de validación**
-- RF-EST-07 sale de una nota de tareas pendientes en `loader.py`. Hay que confirmar si la v1 llegó a implementarlo y si el comportamiento sigue siendo necesario.
-- RF-EST-08: la v1 define los nombres de proceso del juego (`Fuser-Win64-Shipping.exe` y `FuserEOS-Win64-Shipping.exe`), pero no se pudo verificar para qué los usa.
+- RF-EST-07 (resuelto): la v1 borra el caché en `refresh_list`, en `launch_fuser` y al mover canciones (`manager.py`). La v2 lo hace tras cada cambio de estado o importación y antes de lanzar.
+- RF-EST-08 (resuelto): la v1 usa esos nombres de proceso (`Fuser-Win64-Shipping.exe` y `FuserEOS-Win64-Shipping.exe`) para bloquear cambios de estado e importaciones mientras el juego está abierto. La v2 hace lo mismo.
 
 ### 3.4 Importación de canciones (IMP)
 

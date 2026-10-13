@@ -300,8 +300,8 @@ Tabla `songs` (compatible con la actual, con columnas nuevas marcadas):
 
 | Columna | Tipo | Origen |
 |---|---|---|
-| `filename` | TEXT, PK | Nombre corto del pak (`xxx_P`) |
-| `song_name` | TEXT | Metadatos del juego |
+| `filename` | TEXT, PK (sin distinguir mayúsculas) | Nombre corto del pak (`xxx_P`) |
+| `song_name` | TEXT | Metadatos del juego (en la v1 la columna se llama `name`) |
 | `artist` | TEXT | Metadatos del juego |
 | `year` | INTEGER | Metadatos del juego |
 | `genre` | INTEGER | Metadatos del juego |
@@ -312,12 +312,17 @@ Tabla `songs` (compatible con la actual, con columnas nuevas marcadas):
 | `rating` | INTEGER | Usuario |
 | `notes` | TEXT | Usuario |
 | `author` | TEXT | Usuario |
-| `file_size` *(nuevo)* | INTEGER | Detección de cambios |
-| `file_modified_utc` *(nuevo)* | TEXT | Detección de cambios |
-| `extra_json` *(nuevo)* | TEXT | Properties adicionales descubiertas |
-| `read_status` *(nuevo)* | TEXT | `ok`, `partial` o `failed`, con motivo |
+| `relative_path` *(nuevo)* | TEXT | Ruta relativa a la carpeta habilitada o deshabilitada (subcarpetas) |
+| `has_signature` *(nuevo)* | INTEGER | Si existe el `.sig` junto al pak |
+| `file_size` *(nuevo)* | INTEGER | Detección de cambios (NULL = nunca leído por la v2) |
+| `file_modified_utc` *(nuevo)* | TEXT | Detección de cambios (ISO 8601) |
+| `read_status` *(nuevo)* | TEXT | `ok`, `partial` o `failed` |
+| `read_error` *(nuevo)* | TEXT | Motivo del estado `partial` o `failed` |
+| `extra_json` *(nuevo)* | TEXT | Properties adicionales descubiertas (reservada, aún sin uso) |
 
-Una tabla `schema_version` controla las migraciones. La primera migración importa la base de la v1 sin perder rating, notas ni autor.
+`genre`, `key` y `mode` usan los mismos valores numéricos que la v1. "Sin dato" se guarda como NULL, mientras que la v1 usaba `Num`.
+
+Una tabla `schema_version` controla las migraciones. La v2 usa su propia base (`%LocalAppData%\FuserSongManager\songs.sqlite`). La base de la v1 se importa leyéndola en modo solo lectura (`V1Import`), sin modificarla, y se conservan rating, notas y autor. Las filas importadas no tienen tamaño ni fecha, así que la primera sincronización vuelve a leer sus paks.
 
 ### 6.5 Flujo de arranque y sincronización
 
