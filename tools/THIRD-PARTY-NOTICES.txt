@@ -1,0 +1,69 @@
+Fuser Song Manager includes the following third-party packages.
+Each is used under the license shown; full texts are at the linked project or in the package.
+
+Avalonia                                                12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Angle.Windows.Natives                          2.1.27548.20260419 BSD-3-Clause (ANGLE)   https://avaloniaui.net/
+Avalonia.Controls.DataGrid                              12.1.2         MIT                    https://avaloniaui.net/
+Avalonia.Desktop                                        12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Fonts.Inter                                    12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.HarfBuzz                                       12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Remote.Protocol                                12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Skia                                           12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Themes.Fluent                                  12.1.4         MIT                    https://avaloniaui.net/
+Avalonia.Win32                                          12.1.4         MIT                    https://avaloniaui.net/
+Blake3                                                  3.0.2          BSD-2-Clause           https://github.com/xoofx/Blake3.NET
+BouncyCastle.Cryptography                               2.6.2          MIT                    https://www.bouncycastle.org/stable/nuget/csharp/website
+CUE4Parse                                               1.2.2.202610   Apache-2.0             
+CommunityToolkit.HighPerformance                        8.4.2          MIT                    https://github.com/CommunityToolkit/dotnet
+CommunityToolkit.Mvvm                                   8.4.2          MIT                    https://github.com/CommunityToolkit/dotnet
+FixedMathSharp                                          4.0.1          MIT                    
+Fmod5Sharp                                              3.1.0          MIT                    https://github.com/SamboyCoding/Fmod5Sharp
+GenericReader                                           2.3.0          MIT                    
+HarfBuzzSharp                                           8.3.1.3        MIT                    https://go.microsoft.com/fwlink/?linkid=868515
+HarfBuzzSharp.NativeAssets.Win32                        8.3.1.3        MIT                    https://go.microsoft.com/fwlink/?linkid=868515
+IndexRange                                              1.1.0          MIT                    https://github.com/bgrainger/IndexRange
+Infrablack.UE4Config                                    0.7.2.97       MIT                    https://github.com/Wortex17/UE4Config
+K4os.Compression.LZ4                                    1.3.8          MIT                    https://github.com/MiloszKrajewski/K4os.Compression.LZ4
+K4os.Compression.LZ4.Streams                            1.3.8          MIT                    https://github.com/MiloszKrajewski/K4os.Compression.LZ4
+K4os.Hash.xxHash                                        1.0.8          MIT                    https://github.com/MiloszKrajewski/K4os.Hash.xxHash
+LZMA-SDK                                                22.1.1         MIT                    https://github.com/monemihir/LZMA-SDK
+MemoryPack                                              1.21.4         MIT                    https://github.com/Cysharp/MemoryPack
+MemoryPack.Core                                         1.21.4         MIT                    https://github.com/Cysharp/MemoryPack
+MicroCom.Runtime                                        0.11.6         MIT                    
+Microsoft.Bcl.Memory                                    10.0.12        MIT                    https://dot.net/
+Microsoft.Data.Sqlite                                   10.0.12        MIT                    https://docs.microsoft.com/dotnet/standard/data/sqlite/
+Microsoft.Data.Sqlite.Core                              10.0.12        MIT                    https://docs.microsoft.com/dotnet/standard/data/sqlite/
+Microsoft.Extensions.DependencyInjection.Abstractions   8.0.0          MIT                    https://dot.net/
+Microsoft.Extensions.Logging.Abstractions               8.0.0          MIT                    https://dot.net/
+Microsoft.IO.RecyclableMemoryStream                     3.0.1          MIT                    https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream
+Microsoft.NETCore.Platforms                             1.1.0          MIT                    https://dot.net/
+NAudio.Core                                             2.2.1          MIT                    https://github.com/naudio/NAudio
+NAudio.WinMM                                            2.2.1          MIT                    https://github.com/naudio/NAudio
+NETStandard.Library                                     1.6.1          MIT                    https://dot.net/
+NVorbis                                                 0.10.5         MIT                    https://github.com/NVorbis/NVorbis
+Newtonsoft.Json                                         13.0.4         MIT                    https://www.newtonsoft.com/json
+OffiUtils                                               3.2.0          MIT                    
+OggVorbisEncoder                                        1.2.2          MIT                    https://github.com/SteveLillis/.NET-Ogg-Vorbis-Encoder
+Oodle.NET                                               2.2.0          MIT                    
+OodleSharp                                              0.0.1          MIT                    
+SQLitePCLRaw.bundle_e_sqlite3                           2.1.12         Apache-2.0             
+SQLitePCLRaw.core                                       2.1.12         Apache-2.0             
+SQLitePCLRaw.lib.e_sqlite3                              2.1.12         Apache-2.0             
+SQLitePCLRaw.provider.e_sqlite3                         2.1.12         Apache-2.0             
+Serilog                                                 4.3.1          Apache-2.0             https://serilog.net/
+Serilog.Sinks.Console                                   6.1.1          Apache-2.0             https://github.com/serilog/serilog-sinks-console
+Serilog.Sinks.File                                      7.0.0          Apache-2.0             https://github.com/serilog/serilog-sinks-file
+SharpCompress                                           0.50.5         MIT                    https://github.com/adamhathcock/sharpcompress
+SkiaSharp                                               3.119.4        MIT                    https://go.microsoft.com/fwlink/?linkid=868515
+SkiaSharp.NativeAssets.Win32                            3.119.4        MIT                    https://go.microsoft.com/fwlink/?linkid=868515
+SubstreamSharp                                          1.0.3          MIT                    
+System.IO.Hashing                                       10.0.8         MIT                    https://dot.net/
+System.Numerics.Tensors                                 10.0.10        MIT                    https://dot.net/
+Tmds.DBus.Protocol                                      0.94.1         MIT                    
+VGAudio                                                 2.2.1          MIT                    https://github.com/Thealexbarney/VGAudio
+Zlib-ng.NET                                             1.2.0          MIT                    
+ZstdSharp.Port                                          0.8.8          MIT                    https://github.com/oleg-st/ZstdSharp
+
+The Inter font included by Avalonia.Fonts.Inter is licensed under the SIL Open Font License 1.1: https://github.com/rsms/inter
+The .NET runtime bundled in the executable is MIT licensed: https://github.com/dotnet/runtime
+The MOGG decryption follows moggcrypt as included in FuserCustomSongCreator (https://github.com/NarrikSynthfox/FuserCustomSongCreator).
