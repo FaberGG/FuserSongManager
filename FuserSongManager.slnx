@@ -7,5 +7,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FuserSongManager.Core.Tests/FuserSongManager.Core.Tests.csproj" />
+    <Project Path="tests/FuserSongManager.Infrastructure.Tests/FuserSongManager.Infrastructure.Tests.csproj" />
+    <Project Path="tests/FuserSongManager.UI.Tests/FuserSongManager.UI.Tests.csproj" />
   </Folder>
 </Solution>

@@ -3,20 +3,244 @@
         xmlns:vm="using:FuserSongManager.UI.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
         x:Class="FuserSongManager.UI.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="FuserSongManager.UI">
+        Title="Fuser Song Manager"
+        Width="1280" Height="760" MinWidth="900" MinHeight="500"
+        WindowStartupLocation="CenterScreen">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
+    <DockPanel>
+        <!-- Actions -->
+        <Border DockPanel.Dock="Top" Padding="12,10" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="accent" Content="▶  Play Fuser" Command="{Binding LaunchGameCommand}"
+                            ToolTip.Tip="Clears the game's custom song cache and starts Fuser" />
+                    <Button Content="Settings" Command="{Binding OpenSettingsCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Enable" Command="{Binding EnableSelectedCommand}"
+                            ToolTip.Tip="Move the selected songs to custom_songs so the game loads them" />
+                    <Button Content="Disable" Command="{Binding DisableSelectedCommand}"
+                            ToolTip.Tip="Move the selected songs out of the game's folder" />
+                    <SplitButton Content="Import…" Command="{Binding ImportCommand}"
+                                 ToolTip.Tip="Add songs from .zip, .rar or .7z archives, or loose .pak files with their .sig">
+                        <SplitButton.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Header="Import as disabled…" Command="{Binding ImportDisabledCommand}" />
+                            </MenuFlyout>
+                        </SplitButton.Flyout>
+                    </SplitButton>
+                    <SplitButton Content="Rescan" Command="{Binding RescanCommand}"
+                                 ToolTip.Tip="Look for songs added, removed or moved outside the manager">
+                        <SplitButton.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Header="Read every song again" Command="{Binding FullRescanCommand}" />
+                            </MenuFlyout>
+                        </SplitButton.Flyout>
+                    </SplitButton>
+                    <TextBlock Classes="warning" VerticalAlignment="Center" Margin="8,0,0,0"
+                               Text="{Binding FileActionsHint}"
+                               IsVisible="{Binding FileActionsHint, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+        <!-- Search and filters -->
+        <Grid DockPanel.Dock="Top" Margin="12,10,12,6" ColumnDefinitions="300,Auto,Auto,Auto,Auto,*" ColumnSpacing="8">
+            <TextBox x:Name="SearchBox" Text="{Binding SearchText}" PlaceholderText="Search title, artist, author or notes  (Ctrl+F)" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" MinWidth="150" />
+            <ComboBox Grid.Column="2" ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" MinWidth="140" />
+            <ComboBox Grid.Column="3" ItemsSource="{Binding RatingOptions}" SelectedItem="{Binding SelectedRating}" MinWidth="150" />
+            <Button Grid.Column="4" Content="Clear filters" Command="{Binding ClearFiltersCommand}" />
+            <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="12">
+                <TextBlock Classes="hint" Text="{Binding SelectionText}" />
+                <TextBlock Text="{Binding CountText}" />
+            </StackPanel>
+        </Grid>
 
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Padding="12,6" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           ToolTip.Tip="{Binding StatusText}" />
+                <ProgressBar Grid.Column="1" Width="220" VerticalAlignment="Center"
+                             IsVisible="{Binding IsProgressVisible}" IsIndeterminate="{Binding IsProgressIndeterminate}"
+                             Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
+            </Grid>
+        </Border>
+
+        <Grid ColumnDefinitions="*,4,320">
+            <!-- Song list -->
+            <Panel>
+                <DataGrid x:Name="SongGrid" ItemsSource="{Binding Songs}"
+                          IsReadOnly="True" SelectionMode="Extended"
+                          CanUserSortColumns="True" CanUserResizeColumns="True" CanUserReorderColumns="True"
+                          GridLinesVisibility="None" HeadersVisibility="Column">
+                    <DataGrid.Styles>
+                        <Style Selector="DataGridRow" x:DataType="vm:SongRowViewModel">
+                            <Setter Property="Opacity" Value="{Binding RowOpacity}" />
+                        </Style>
+                    </DataGrid.Styles>
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="" Width="34" SortMemberPath="HasProblem" CanUserResize="False" x:DataType="vm:SongRowViewModel">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:SongRowViewModel">
+                                    <TextBlock Text="⚠" Foreground="#CA5010" FontSize="14"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               IsVisible="{Binding HasProblem}" ToolTip.Tip="{Binding Problem}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Title" Binding="{Binding Title}" SortMemberPath="TitleSortKey" Width="2*" MinWidth="140" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Artist" Binding="{Binding Artist}" SortMemberPath="ArtistSortKey" Width="1.5*" MinWidth="110" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="72" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Genre" Binding="{Binding Genre}" Width="108" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Key" Binding="{Binding Key}" SortMemberPath="KeySortValue" Width="66" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Mode" Binding="{Binding Mode}" Width="80" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="BPM" Binding="{Binding Bpm}" Width="72" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="80" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Rating" Binding="{Binding Stars}" SortMemberPath="Rating" Width="90" x:DataType="vm:SongRowViewModel" />
+                        <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="1*" MinWidth="80" x:DataType="vm:SongRowViewModel" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Classes="hint" Text="{Binding EmptyText}" TextAlignment="Center" MaxWidth="420"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding EmptyText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Panel>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+            <!-- Detail of the selected song -->
+            <Border Grid.Column="2" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                <Panel>
+                    <TextBlock Classes="hint" Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                               Text="Select a song to see its details."
+                               IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNull}}" />
+
+                    <ContentControl Content="{Binding Detail}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="vm:SongDetailViewModel">
+                    <ScrollViewer>
+                        <StackPanel Margin="16" Spacing="2">
+                            <!-- Album art (RF-PEN-14): square, with a placeholder that says why there is none. -->
+                            <Border Width="288" Height="288" CornerRadius="6" ClipToBounds="True" HorizontalAlignment="Left" Margin="0,0,0,12"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                <Panel>
+                                    <Image Source="{Binding AlbumArt}" Stretch="UniformToFill"
+                                           IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6"
+                                                IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNull}}">
+                                        <TextBlock Text="♪" FontSize="48" HorizontalAlignment="Center" Opacity="0.35" />
+                                        <TextBlock Classes="hint" Text="{Binding ArtMessage}" TextAlignment="Center" MaxWidth="220" />
+                                    </StackPanel>
+                                </Panel>
+                            </Border>
+
+                            <SelectableTextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <SelectableTextBlock Text="{Binding Artist}" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,8" />
+
+                            <Border IsVisible="{Binding HasProblem}" Padding="10" CornerRadius="6" Margin="0,4,0,8"
+                                    Background="#22CA5010">
+                                <SelectableTextBlock Text="{Binding Problem}" TextWrapping="Wrap" />
+                            </Border>
+
+                            <!-- Preview (RF-PEN-13): the four parts together, each one can be turned off. -->
+                            <ContentControl Content="{Binding Player}">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate x:DataType="vm:PlayerViewModel">
+                            <Border Padding="10" CornerRadius="6" Margin="0,0,0,8"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                <StackPanel Spacing="6">
+                                    <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="6">
+                                        <Button Classes="accent" Content="{Binding PlayPauseText}" Command="{Binding PlayPauseCommand}" MinWidth="96"
+                                                HorizontalContentAlignment="Center" ToolTip.Tip="Listen to the song as it plays in the game" />
+                                        <Button Grid.Column="1" Content="■" Command="{Binding StopCommand}" ToolTip.Tip="Stop and go back to the start" />
+                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   FontFeatures="tnum" />
+                                    </Grid>
+                                    <Slider Minimum="0" Maximum="{Binding DurationSeconds}" Value="{Binding PositionSeconds}"
+                                            IsEnabled="{Binding CanSeek}" Margin="0,-6,0,-6" />
+                                    <ItemsControl ItemsSource="{Binding Stems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="4" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:StemToggleViewModel">
+                                                <ToggleButton Content="{Binding Name}" IsChecked="{Binding IsOn}" IsEnabled="{Binding IsAvailable}"
+                                                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0"
+                                                              ToolTip.Tip="{Binding ToolTip}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Classes="warning" Text="{Binding Message}"
+                                               IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                </StackPanel>
+                            </Border>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+                                <TextBlock Classes="label" Text="Year" />
+                                <TextBlock Grid.Column="1" Text="{Binding Year}" />
+                                <TextBlock Grid.Row="1" Classes="label" Text="Genre" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Genre}" />
+                                <TextBlock Grid.Row="2" Classes="label" Text="Key" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Key}" />
+                                <TextBlock Grid.Row="3" Classes="label" Text="Mode" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Mode}" />
+                                <TextBlock Grid.Row="4" Classes="label" Text="BPM" />
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Bpm}" />
+                                <TextBlock Grid.Row="5" Classes="label" Text="State" />
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding State}" />
+                                <TextBlock Grid.Row="6" Classes="label" Text="Read" />
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ReadStatus}" />
+                            </Grid>
+
+                            <TextBlock Classes="section" Text="Rating" />
+                            <ItemsControl ItemsSource="{Binding StarSlots}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:StarSlot">
+                                        <Button Content="{Binding Glyph}" FontSize="20" Padding="4,0" Background="Transparent" BorderThickness="0"
+                                                Foreground="#E3A008"
+                                                Command="{Binding $parent[ItemsControl].((vm:SongDetailViewModel)DataContext).SetRatingCommand}"
+                                                CommandParameter="{Binding Value}"
+                                                ToolTip.Tip="Click the current rating again to clear it" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Classes="section" Text="Author" />
+                            <TextBox Text="{Binding Author, UpdateSourceTrigger=LostFocus}" PlaceholderText="Who made this custom song" />
+
+                            <TextBlock Classes="section" Text="Notes" />
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap"
+                                     MinHeight="90" MaxHeight="220" PlaceholderText="Anything you want to remember about this song" />
+
+                            <TextBlock Classes="section" Text="File" />
+                            <SelectableTextBlock Text="{Binding FileName}" />
+                            <SelectableTextBlock Classes="hint" Text="{Binding Location}" TextWrapping="Wrap" FontSize="12" />
+                            <Button Content="Show in folder" Command="{Binding OpenFolderCommand}" Margin="0,8,0,0"
+                                    IsEnabled="{Binding FullPath, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </Panel>
+            </Border>
+        </Grid>
+    </DockPanel>
 </Window>

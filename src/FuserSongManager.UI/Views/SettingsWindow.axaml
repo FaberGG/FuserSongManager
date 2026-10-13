@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FuserSongManager.UI.ViewModels"
+        xmlns:views="using:FuserSongManager.UI.Views"
+        x:Class="FuserSongManager.UI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings"
+        Width="560" SizeToContent="Height"
+        CanResize="False" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="20">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,20,0,0">
+            <Button DockPanel.Dock="Left" Content="Open log folder" Command="{Binding OpenLogsCommand}"
+                    IsVisible="{Binding CanOpenLogs}" ToolTip.Tip="Events and errors are written here, one file per day" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button x:Name="SaveButton" Classes="accent" Content="Save" MinWidth="88" IsDefault="True"
+                        IsEnabled="{Binding CanSave}" HorizontalContentAlignment="Center" />
+                <Button x:Name="CancelButton" Content="Cancel" MinWidth="88" IsCancel="True" HorizontalContentAlignment="Center" />
+            </StackPanel>
+        </DockPanel>
+        <views:FuserSettingsView />
+    </DockPanel>
+</Window>
