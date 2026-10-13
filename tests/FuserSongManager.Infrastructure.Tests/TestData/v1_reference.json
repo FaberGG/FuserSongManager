@@ -1,0 +1,202 @@
+[
+  {
+    "short_name": "2Unlimited_GetReadyForThis",
+    "title": "Get Ready for This",
+    "artist": "2 Unlimited",
+    "year": 1991,
+    "genre": "Dance",
+    "key": "E",
+    "mode": "Minor",
+    "bpm": 125
+  },
+  {
+    "short_name": "AB_dancingqueen_HazLaBaz",
+    "title": "Dancing Queen",
+    "artist": "ABBA",
+    "year": 1976,
+    "genre": "Pop",
+    "key": "A",
+    "mode": "Major",
+    "bpm": 101
+  },
+  {
+    "short_name": "ASAP_FProblems",
+    "title": "Fuckin' Problems",
+    "artist": "A$AP Rocky ft. 2 Chainz",
+    "year": 2012,
+    "genre": "HipHop",
+    "key": "Bb",
+    "mode": "Minor",
+    "bpm": 96
+  },
+  {
+    "short_name": "AW_Run_ShpQn",
+    "title": "Run",
+    "artist": "AWOLNATION",
+    "year": 2015,
+    "genre": "Rock",
+    "key": "Ab",
+    "mode": "Minor",
+    "bpm": 138
+  },
+  {
+    "short_name": "tenderoni_tfg",
+    "title": "Tenderoni",
+    "artist": "Chromeo",
+    "year": 2007,
+    "genre": "Dance",
+    "key": "G",
+    "mode": "Minor",
+    "bpm": 124
+  },
+  {
+    "short_name": "ThDo_ROTS_ShpQn",
+    "title": "Riders On The Storm",
+    "artist": "The Doors",
+    "year": 1971,
+    "genre": "Rock",
+    "key": "E",
+    "mode": "Minor",
+    "bpm": 104
+  },
+  {
+    "short_name": "TheyDontCareAboutUsMJ",
+    "title": "They Don't Care About Us",
+    "artist": "Michael Jackson",
+    "year": 1995,
+    "genre": "Pop",
+    "key": "D",
+    "mode": "Minor",
+    "bpm": 90
+  },
+  {
+    "short_name": "This_Is_America_HB",
+    "title": "This Is America",
+    "artist": "Childish Gambino",
+    "year": 2018,
+    "genre": "HipHop",
+    "key": "Eb",
+    "mode": "Minor",
+    "bpm": 120
+  },
+  {
+    "short_name": "TLT_ItsBeenSoLong_Blahaszi",
+    "title": "It's Been So Long",
+    "artist": "The Living Tombstone",
+    "year": 2014,
+    "genre": "Dance",
+    "key": "Bb",
+    "mode": "Minor",
+    "bpm": 96
+  },
+  {
+    "short_name": "TommyRichman_MILLIONDOLLARBABY",
+    "title": "MILLION DOLLAR BABY",
+    "artist": "Tommy Richman",
+    "year": 2024,
+    "genre": "RnB",
+    "key": "Gb",
+    "mode": "Minor",
+    "bpm": 138
+  },
+  {
+    "short_name": "TOP_Heat_ShpQn",
+    "title": "Heathens",
+    "artist": "Twenty One Pilots",
+    "year": 2016,
+    "genre": "Pop",
+    "key": "E",
+    "mode": "Minor",
+    "bpm": 90
+  },
+  {
+    "short_name": "tvoffKendrickLamar",
+    "title": "tv off",
+    "artist": "Kendrick Lamar",
+    "year": 2024,
+    "genre": "HipHop",
+    "key": "Gb",
+    "mode": "Minor",
+    "bpm": 100
+  },
+  {
+    "short_name": "Ultimate_HB",
+    "title": "Ultimate",
+    "artist": "Denzel Curry",
+    "year": 2015,
+    "genre": "HipHop",
+    "key": "Ab",
+    "mode": "Minor",
+    "bpm": 114
+  },
+  {
+    "short_name": "umbrella_rihanna",
+    "title": "Umbrella",
+    "artist": "Rihanna feat. Jay-Z",
+    "year": 2007,
+    "genre": "Pop",
+    "key": "Bb",
+    "mode": "Minor",
+    "bpm": 90
+  },
+  {
+    "short_name": "ush_yeah_elena",
+    "title": "Yeah!",
+    "artist": "Usher ft. Lil Jon and Ludacris",
+    "year": 2004,
+    "genre": "RnB",
+    "key": "G",
+    "mode": "Minor",
+    "bpm": 105
+  },
+  {
+    "short_name": "Waiting_For_Love_HB",
+    "title": "Waiting For Love",
+    "artist": "Avicii",
+    "year": 2015,
+    "genre": "Dance",
+    "key": "Gb",
+    "mode": "Minor",
+    "bpm": 128
+  },
+  {
+    "short_name": "Wake_Me_Up_ADRIANHHE",
+    "title": "Wake Me Up ",
+    "artist": "Avicii",
+    "year": 2013,
+    "genre": "Dance",
+    "key": "B",
+    "mode": "Minor",
+    "bpm": 124
+  },
+  {
+    "short_name": "We_Found_Love",
+    "title": "We Found Love",
+    "artist": "Rihanna, Calvin Harris",
+    "year": 1999,
+    "genre": "Rock",
+    "key": "Eb",
+    "mode": "Minor",
+    "bpm": 128
+  },
+  {
+    "short_name": "Woman_ADRIANHHE",
+    "title": "Woman",
+    "artist": "Doja Cat",
+    "year": 2021,
+    "genre": "Pop",
+    "key": "C",
+    "mode": "Minor",
+    "bpm": 108
+  },
+  {
+    "short_name": "You_Broke_My_Heart_HB",
+    "title": "You Broke My Heart",
+    "artist": "Drake",
+    "year": 2023,
+    "genre": "HipHop",
+    "key": "Bb",
+    "mode": "Minor",
+    "bpm": 124
+  }
+]

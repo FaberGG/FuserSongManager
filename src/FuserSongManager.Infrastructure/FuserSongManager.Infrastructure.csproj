@@ -6,8 +6,12 @@
 
   <ItemGroup>
     <PackageReference Include="CUE4Parse" Version="1.2.2.202610" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
-    <PackageReference Include="SharpCompress" Version="0.50.5" />
+    <!-- Pins the transitive dependency of CUE4Parse (via Fmod5Sharp → IndexRange) above 9.0.0, which has advisory GHSA-73j8-2gch-69rq. -->
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Pak\patched_dlc_metadata.json" LogicalName="patched_dlc_metadata.json" />
   </ItemGroup>
 
   <PropertyGroup>
