@@ -9,7 +9,10 @@
     <!-- Pins the transitive dependency of CUE4Parse (via Fmod5Sharp → IndexRange) above 9.0.0, which has advisory GHSA-73j8-2gch-69rq. -->
     <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.12" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
+    <PackageReference Include="NVorbis" Version="0.10.5" />
     <PackageReference Include="SharpCompress" Version="0.50.5" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
 
   <ItemGroup>
