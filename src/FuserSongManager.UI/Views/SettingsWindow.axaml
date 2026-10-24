@@ -2,22 +2,31 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FuserSongManager.UI.ViewModels"
         xmlns:views="using:FuserSongManager.UI.Views"
+        xmlns:c="using:FuserSongManager.UI.Controls"
         x:Class="FuserSongManager.UI.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
-        Width="560" SizeToContent="Height"
+        Width="640" SizeToContent="Height"
         CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
-    <DockPanel Margin="20">
+    <Panel>
+    <c:NightSky />
+    <Border Background="#E0100616" CornerRadius="6" Margin="18" Padding="28,24">
+    <DockPanel>
         <DockPanel DockPanel.Dock="Bottom" Margin="0,20,0,0">
-            <Button DockPanel.Dock="Left" Content="Open log folder" Command="{Binding OpenLogsCommand}"
+            <Button DockPanel.Dock="Left" Classes="coral quiet" Content="Open log folder" Command="{Binding OpenLogsCommand}"
                     IsVisible="{Binding CanOpenLogs}" ToolTip.Tip="Events and errors are written here, one file per day" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button x:Name="SaveButton" Classes="accent" Content="Save" MinWidth="88" IsDefault="True"
+                <Button x:Name="SaveButton" Classes="coral" Content="Save" MinWidth="140" MinHeight="48" IsDefault="True"
                         IsEnabled="{Binding CanSave}" HorizontalContentAlignment="Center" />
-                <Button x:Name="CancelButton" Content="Cancel" MinWidth="88" IsCancel="True" HorizontalContentAlignment="Center" />
+                <Button x:Name="CancelButton" Classes="coral quiet" Content="Cancel" MinWidth="120" MinHeight="48" IsCancel="True" HorizontalContentAlignment="Center" />
             </StackPanel>
         </DockPanel>
-        <views:FuserSettingsView />
+        <StackPanel Spacing="14">
+            <TextBlock Text="Settings" FontSize="26" FontWeight="ExtraBold" />
+            <views:FuserSettingsView />
+        </StackPanel>
     </DockPanel>
+    </Border>
+    </Panel>
 </Window>

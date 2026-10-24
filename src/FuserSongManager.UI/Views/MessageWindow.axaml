@@ -1,16 +1,25 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:FuserSongManager.UI.Controls"
         x:Class="FuserSongManager.UI.Views.MessageWindow"
-        Width="480" SizeToContent="Height" MaxHeight="560"
+        Width="600" SizeToContent="Height" MaxHeight="680"
         CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
-    <DockPanel Margin="20">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
-            <Button x:Name="ConfirmButton" Classes="accent" MinWidth="88" IsDefault="True" HorizontalContentAlignment="Center" />
-            <Button x:Name="CancelButton" MinWidth="88" IsCancel="True" HorizontalContentAlignment="Center" />
-        </StackPanel>
-        <ScrollViewer>
-            <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" />
-        </ScrollViewer>
-    </DockPanel>
+    <!-- Like the game's dialogs: a dark box over the blurred sky, title on top, coral buttons. -->
+    <Panel>
+        <c:NightSky />
+        <Border Background="#E0100616" CornerRadius="6" Margin="18" Padding="32,26,32,28">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" x:Name="TitleText" FontSize="26" FontWeight="ExtraBold"
+                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,14" />
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,24,0,0">
+                    <Button x:Name="CancelButton" Classes="coral quiet" MinWidth="160" MinHeight="52" IsCancel="True" FontSize="17" />
+                    <Button x:Name="ConfirmButton" Classes="coral" MinWidth="220" MinHeight="52" IsDefault="True" FontSize="17" />
+                </StackPanel>
+                <ScrollViewer>
+                    <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="16" LineHeight="23" Foreground="#ECE6F7" />
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Panel>
 </Window>

@@ -2,22 +2,26 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FuserSongManager.UI.ViewModels"
         xmlns:views="using:FuserSongManager.UI.Views"
+        xmlns:c="using:FuserSongManager.UI.Controls"
         x:Class="FuserSongManager.UI.Views.FirstRunWindow"
         x:DataType="vm:FirstRunViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="Fuser Song Manager"
-        Width="600" SizeToContent="Height"
+        Width="680" SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
-    <DockPanel Margin="24">
+    <Panel>
+    <c:NightSky />
+    <Border Background="#E0100616" CornerRadius="6" Margin="18" Padding="30,26">
+    <DockPanel>
         <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,12">
-            <TextBlock Text="Welcome to Fuser Song Manager" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="Welcome to Fuser Song Manager" FontSize="28" FontWeight="ExtraBold" TextWrapping="Wrap" />
             <TextBlock Classes="hint" Text="{Binding Intro}" />
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom">
             <Border IsVisible="{Binding HasV1}" Margin="0,16,0,0" Padding="12" CornerRadius="6"
-                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    Background="#14FFFFFF">
                 <StackPanel Spacing="6">
                     <CheckBox IsChecked="{Binding ImportV1}" Content="Bring my library from v1 (ratings, notes and authors)" />
                     <TextBlock Classes="hint" Text="{Binding V1Summary}" Margin="28,0,0,0" />
@@ -25,11 +29,13 @@
             </Border>
             <TextBlock Classes="hint" Margin="0,16,0,0"
                        Text="The custom_songs and disabled_songs folders are created if they do not exist. The library is scanned right after." />
-            <Button x:Name="ContinueButton" Classes="accent" Content="Continue" MinWidth="110" Margin="0,16,0,0"
+            <Button x:Name="ContinueButton" Classes="coral" Content="Continue" MinWidth="200" MinHeight="52" FontSize="17" Margin="0,18,0,0"
                     HorizontalAlignment="Right" HorizontalContentAlignment="Center" IsDefault="True"
                     IsEnabled="{Binding CanSave}" />
         </StackPanel>
 
         <views:FuserSettingsView />
     </DockPanel>
+    </Border>
+    </Panel>
 </Window>
