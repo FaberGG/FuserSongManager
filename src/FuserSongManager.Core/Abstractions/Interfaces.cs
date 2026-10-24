@@ -90,7 +90,10 @@ public interface IStemPlayer : IDisposable
 
     void SetMuted(StemKind stem, bool muted);
 
-    /// <summary>Raised (on any thread) when playback reaches the end or the audio device stops it.</summary>
+    /// <summary>Starts again from the beginning at the end of the song instead of stopping.</summary>
+    bool Loop { get; set; }
+
+    /// <summary>Raised (on any thread) when playback reaches the end (never while looping) or the audio device stops it.</summary>
     event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 }
 

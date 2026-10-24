@@ -69,6 +69,7 @@ public sealed class NAudioStemPlayer : IStemPlayer
     // Set when the mixer runs out of audio. WaveOut raises PlaybackStopped asynchronously for both the end of
     // the song and an explicit Stop, so this is what tells them apart.
     private volatile bool _reachedEnd;
+    private bool _loop;
 
     public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 
@@ -79,7 +80,7 @@ public sealed class NAudioStemPlayer : IStemPlayer
         {
             foreach (var stem in audio.Stems)
                 sources.Add((stem.Kind, new VorbisStemSource(stem.OggData)));
-            var mixer = new StemMixer(sources);
+            var mixer = new StemMixer(sources) { Loop = _loop };
             ReleaseOutput();
             lock (_gate)
             {
@@ -138,6 +139,19 @@ public sealed class NAudioStemPlayer : IStemPlayer
     public void SetMuted(StemKind stem, bool muted)
     {
         lock (_gate) _mixer?.SetMuted(stem, muted);
+    }
+
+    public bool Loop
+    {
+        get => _loop;
+        set
+        {
+            lock (_gate)
+            {
+                _loop = value;
+                _mixer?.Loop = value;
+            }
+        }
     }
 
     private void OnPlaybackStopped(object? sender, StoppedEventArgs e)

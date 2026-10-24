@@ -228,6 +228,24 @@ public class StemMixerTests
     }
 
     [Fact]
+    public void Looping_wraps_around_and_never_runs_dry()
+    {
+        using var mixer = new StemMixer([(StemKind.Beat, new ConstantSource(0.5f, 100))]) { Loop = true };
+        mixer.Seek(80);
+
+        var samples = Read(mixer, 50);   // 20 frames to the end, then 30 from the start
+
+        Assert.Equal(100, samples.Length);
+        Assert.All(samples, s => Assert.Equal(0.5f * 0.6f, s, 0.0001f));
+        Assert.Equal(30, mixer.PositionFrames);
+
+        mixer.Loop = false;
+        mixer.Seek(90);
+        Assert.Equal(20, Read(mixer, 50).Length);   // without looping it stops at the end
+        Assert.Empty(Read(mixer, 50));
+    }
+
+    [Fact]
     public void Parts_are_summed_and_muted_parts_stay_in_time()
     {
         var bass = new ConstantSource(0.5f, 100);

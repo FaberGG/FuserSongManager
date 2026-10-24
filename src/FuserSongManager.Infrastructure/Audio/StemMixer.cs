@@ -56,6 +56,12 @@ public sealed class StemMixer : IDisposable
 
     public bool IsMuted(StemKind kind) => _muted.Contains(kind);
 
+    /// <summary>
+    /// Starts again from the beginning instead of ending, as the game does: a Fuser song is four phrases of
+    /// eight bars that are made to repeat seamlessly.
+    /// </summary>
+    public bool Loop { get; set; }
+
     public void Seek(long frame)
     {
         frame = Math.Clamp(frame, 0, LengthFrames);
@@ -64,8 +70,29 @@ public sealed class StemMixer : IDisposable
         PositionFrames = frame;
     }
 
-    /// <summary>Fills <paramref name="buffer"/> with interleaved stereo; returns 0 at the end of the longest part.</summary>
+    /// <summary>
+    /// Fills <paramref name="buffer"/> with interleaved stereo; returns 0 at the end of the longest part,
+    /// unless <see cref="Loop"/> is on, in which case it wraps around and always fills the buffer.
+    /// </summary>
     public int Read(float[] buffer, int offset, int count)
+    {
+        var total = 0;
+        while (true)
+        {
+            var read = ReadToEnd(buffer, offset + total, count - total);
+            total += read;
+            if (!Loop || total >= count - OutputChannels + 1)
+                return total;
+            if (read == 0)
+            {
+                if (PositionFrames < LengthFrames || LengthFrames == 0)
+                    return total;   // nothing more to give (empty song): avoid spinning
+                Seek(0);
+            }
+        }
+    }
+
+    private int ReadToEnd(float[] buffer, int offset, int count)
     {
         var frames = Math.Min(count / OutputChannels, (int)Math.Min(int.MaxValue, LengthFrames - PositionFrames));
         if (frames <= 0)

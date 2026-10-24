@@ -200,6 +200,7 @@ public sealed class FakeStemPlayer : IStemPlayer
     public TimeSpan Duration => TimeSpan.FromSeconds(61);
     public bool Disposed { get; private set; }
     public int Plays { get; private set; }
+    public bool Loop { get; set; }
 
     public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 
