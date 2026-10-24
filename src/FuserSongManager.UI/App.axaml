@@ -1,32 +1,49 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FuserSongManager.UI.App"
-             RequestedThemeVariant="Default">
-    <!-- "Default" follows the system light/dark setting. -->
+             RequestedThemeVariant="Dark">
+    <!-- Always dark: the app is styled after the game's menus, which are dark. -->
+
+    <Application.Resources>
+        <!-- Fluent's accent (check boxes, radio buttons, focus) in the app's violet. -->
+        <Color x:Key="SystemAccentColor">#9D84F6</Color>
+        <Color x:Key="SystemAccentColorDark1">#8A6FF0</Color>
+        <Color x:Key="SystemAccentColorDark2">#6C55EE</Color>
+        <Color x:Key="SystemAccentColorDark3">#5440C9</Color>
+        <Color x:Key="SystemAccentColorLight1">#B5A2F8</Color>
+        <Color x:Key="SystemAccentColorLight2">#CBBDFA</Color>
+        <Color x:Key="SystemAccentColorLight3">#E0D7FC</Color>
+
+        <!-- Text boxes: dark wells with a violet outline when focused. -->
+        <SolidColorBrush x:Key="TextControlBackground" Color="#8C0A0618" />
+        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#A60A0618" />
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#BF0A0618" />
+        <SolidColorBrush x:Key="TextControlBorderBrush" Color="#1FFFFFFF" />
+        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#40FFFFFF" />
+        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#9D84F6" />
+        <SolidColorBrush x:Key="TextControlForeground" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#8F84B5" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#A49AC8" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#8F84B5" />
+        <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#7D3FD0" />
+
+        <!-- Menus and tooltips: the same deep purple as the drop-down lists. -->
+        <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#F7181030" />
+        <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#6C55EE" />
+        <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#5440C9" />
+        <SolidColorBrush x:Key="ToolTipBackground" Color="#F7181030" />
+        <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="ToolTipForeground" Color="#FFFFFF" />
+        <CornerRadius x:Key="OverlayCornerRadius">6</CornerRadius>
+        <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
-
-        <Style Selector="TextBlock.hint">
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-        <Style Selector="TextBlock.error">
-            <Setter Property="Foreground" Value="#D13438" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-        <Style Selector="TextBlock.warning">
-            <Setter Property="Foreground" Value="#CA5010" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-        <Style Selector="TextBlock.label">
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-            <Setter Property="FontSize" Value="12" />
-        </Style>
-        <Style Selector="TextBlock.section">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,12,0,4" />
-        </Style>
+        <StyleInclude Source="avares://FuserSongManager/Themes/Theme.axaml" />
     </Application.Styles>
 </Application>

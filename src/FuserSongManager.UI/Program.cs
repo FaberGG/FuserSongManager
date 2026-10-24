@@ -1,7 +1,17 @@
 using Avalonia;
+using Avalonia.Media;
 using FuserSongManager.UI.Services;
 
 namespace FuserSongManager.UI;
+
+static class AppBuilderExtensions
+{
+    /// <summary>The app's own font, Kumbh Sans (SIL Open Font License), close to the one of the game's menus.</summary>
+    public const string FontFamilyName = "avares://FuserSongManager/Assets/Fonts#Kumbh Sans";
+
+    public static AppBuilder WithAppFont(this AppBuilder builder) =>
+        builder.With(new FontManagerOptions { DefaultFamilyName = FontFamilyName });
+}
 
 sealed class Program
 {
@@ -50,6 +60,6 @@ sealed class Program
 #if DEBUG
             .WithDeveloperTools()
 #endif
-            .WithInterFont()
+            .WithAppFont()
             .LogToTrace();
 }

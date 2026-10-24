@@ -18,6 +18,7 @@ public static class TestAppBuilder
     // Skia rendering (not headless drawing) so tests can capture real screenshots of the windows.
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UseSkia()
+        .WithAppFont()
         .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
