@@ -3,6 +3,7 @@ using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Objects.Core.i18N;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.UE4.Versions;
+using FuserSongManager.Core.Models;
 
 namespace FuserSongManager.Infrastructure.Pak;
 
@@ -19,7 +20,11 @@ public sealed record PakSongMetadata(
     string? Key,
     string? Mode,
     int? Bpm,
-    IReadOnlyList<string> Missing);
+    IReadOnlyList<string> Missing)
+{
+    /// <summary>Instrument of each part, as the game names it ("Drums", "Synth"…). Not part of the seven v1 fields.</summary>
+    public SongInstruments Instruments { get; init; } = SongInstruments.Unknown;
+}
 
 public static class PakSongMetadataExtractor
 {
@@ -48,7 +53,28 @@ public static class PakSongMetadataExtractor
             Key: EnumValue(bassCel, "Key", missing),
             Mode: EnumValue(bassCel, "Mode", missing),
             Bpm: Int(bassCel, "BPM", missing),
-            missing);
+            missing)
+        {
+            Instruments = new SongInstruments(
+                Instrument(provider, shortName, "bt"),
+                EnumValue(bassCel, "Instrument", []),
+                Instrument(provider, shortName, "lp"),
+                Instrument(provider, shortName, "ld")),
+        };
+    }
+
+    /// <summary>The <c>Instrument</c> of one part's <c>SongCelData</c>, or null if that asset cannot be read.</summary>
+    private static string? Instrument(IFileProvider provider, string shortName, string cel)
+    {
+        try
+        {
+            return EnumValue(FuserPak.LoadFirstExport(provider, FuserPak.CelAssetPath(shortName, cel)), "Instrument", []);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Optional data: a part that cannot be read must not make the whole song a failed read.
+            return null;
+        }
     }
 
     private static string? Text(UObject obj, string name, List<string> missing)

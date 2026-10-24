@@ -74,6 +74,19 @@ public sealed class MetadataReaderTests : IDisposable
     }
 
     [SamplePaksFact]
+    public void Sample_paks_say_which_instrument_plays_each_part()
+    {
+        var paks = Directory.EnumerateFiles(SamplePaksFactAttribute.Directory!, "*.pak", SearchOption.AllDirectories)
+            .ToDictionary(FuserPak.ShortName, StringComparer.OrdinalIgnoreCase);
+
+        // Read from each part's SongCelData; the beat is drums and the lead is vocals in almost every song.
+        var mj = _reader.Read(paks["TheyDontCareAboutUsMJ"]).Instruments;
+        Assert.Equal(new SongInstruments("Drums", "None", "Strings", "Vocal"), mj);   // the author left the bass empty
+        Assert.Equal(new SongInstruments("Drums", "Guitar", "Synth", "Vocal"), _reader.Read(paks["AB_dancingqueen_HazLaBaz"]).Instruments);
+        Assert.All(paks.Values, pak => Assert.NotNull(_reader.Read(pak).Instruments?.Lead));
+    }
+
+    [SamplePaksFact]
     public void Sample_paks_can_be_read_in_parallel()
     {
         var paks = Directory.EnumerateFiles(SamplePaksFactAttribute.Directory!, "*.pak", SearchOption.AllDirectories).ToList();

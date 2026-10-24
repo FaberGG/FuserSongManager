@@ -7,6 +7,9 @@ public sealed record Song
     public required string FileName { get; init; }
 
     public SongMetadata Metadata { get; init; } = SongMetadata.Empty;
+
+    /// <summary>Instrument of each part. Null means the pak was last read by a version that did not store them.</summary>
+    public SongInstruments? Instruments { get; init; }
     public ReadStatus ReadStatus { get; init; } = ReadStatus.Ok;
     public string? ReadError { get; init; }
 

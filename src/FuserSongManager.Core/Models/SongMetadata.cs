@@ -18,7 +18,8 @@ public sealed record SongReadResult(
     SongMetadata Metadata,
     ReadStatus Status,
     string? Error,
-    MetadataSource Source = MetadataSource.Pak)
+    MetadataSource Source = MetadataSource.Pak,
+    SongInstruments? Instruments = null)
 {
     public static SongReadResult Failed(string error) => new(SongMetadata.Empty, ReadStatus.Failed, error);
 }

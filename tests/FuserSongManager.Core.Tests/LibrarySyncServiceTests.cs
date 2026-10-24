@@ -47,6 +47,28 @@ public class LibrarySyncServiceTests
     }
 
     [Fact]
+    public async Task Songs_saved_without_instruments_are_read_once_more()
+    {
+        _scanner.Add("A_P");
+        _scanner.Add("B_P");
+        _scanner.Add("Broken_P");
+        _reader.Failing.Add("Broken_P");
+        await _service.SyncAsync(Paths);
+        // As left by a version that did not store the instruments.
+        foreach (var name in new[] { "A_P", "B_P" })
+            _repository.Songs[name] = _repository.Songs[name] with { Instruments = null };
+        _repository.Songs["Broken_P"] = _repository.Songs["Broken_P"] with { Instruments = null };
+        _reader.ReadPaths.Clear();
+
+        var result = await _service.SyncAsync(Paths);
+
+        Assert.Equal(2, result.Reread);   // a failed read is not retried for this
+        Assert.All(new[] { "A_P", "B_P" }, name => Assert.NotNull(_repository.Songs[name].Instruments));
+        _reader.ReadPaths.Clear();
+        Assert.Equal(0, (await _service.SyncAsync(Paths)).PaksRead);
+    }
+
+    [Fact]
     public async Task Modified_pak_is_reread_and_keeps_user_data()
     {
         var pak = _scanner.Add("A_P");

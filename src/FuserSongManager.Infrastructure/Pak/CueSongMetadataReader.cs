@@ -37,8 +37,8 @@ public sealed class CueSongMetadataReader(PatchedDlcCatalog patchedDlc, EGame ga
             raw.Bpm);
 
         return raw.Missing.Count == 0
-            ? new SongReadResult(metadata, ReadStatus.Ok, null)
-            : new SongReadResult(metadata, ReadStatus.Partial, $"Missing: {string.Join(", ", raw.Missing)}");
+            ? new SongReadResult(metadata, ReadStatus.Ok, null, Instruments: raw.Instruments)
+            : new SongReadResult(metadata, ReadStatus.Partial, $"Missing: {string.Join(", ", raw.Missing)}", Instruments: raw.Instruments);
     }
 
     // Unknown genres fall back to Other instead of failing (RF-MET-05).

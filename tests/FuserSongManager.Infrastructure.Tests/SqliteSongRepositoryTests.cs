@@ -33,6 +33,7 @@ public sealed class SqliteSongRepositoryTests : IDisposable
         Rating = 4,
         Notes = "nota",
         Author = "ShpQn",
+        Instruments = new SongInstruments("Drums", "Synth", null, "Vocal"),
     };
 
     [Fact]
@@ -54,6 +55,26 @@ public sealed class SqliteSongRepositoryTests : IDisposable
         await _repository.InsertIfMissingAsync([song]);
 
         Assert.Equal(song, Assert.Single(await _repository.GetAllAsync()));
+    }
+
+    [Fact]
+    public async Task Instruments_are_updated_by_a_scan_and_unreadable_extras_are_dropped()
+    {
+        await _repository.SaveScanResultsAsync([FullSong() with { Instruments = null }]);
+        Assert.Null(Assert.Single(await _repository.GetAllAsync()).Instruments);
+
+        var instruments = new SongInstruments("Sampler", "Guitar", "Horns", "Vocal");
+        await _repository.SaveScanResultsAsync([FullSong() with { Instruments = instruments }]);
+        Assert.Equal(instruments, Assert.Single(await _repository.GetAllAsync()).Instruments);
+
+        using (var connection = new SqliteDatabase(_temp.File("songs.sqlite")).Open())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE songs SET extra_json = '{not json';";
+            command.ExecuteNonQuery();
+        }
+        // The next sync reads the pak again because the instruments are missing.
+        Assert.Null(Assert.Single(await _repository.GetAllAsync()).Instruments);
     }
 
     [Fact]

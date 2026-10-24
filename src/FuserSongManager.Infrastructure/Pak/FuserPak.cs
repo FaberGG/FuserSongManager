@@ -64,8 +64,11 @@ public static class FuserPak
         $"Fuser/Content/DLC/Songs/{shortName}/Meta_{shortName}.uasset";
 
     /// <summary>Bass cel asset with title, key, mode and BPM (<c>SongCelData</c>).</summary>
-    public static string BassCelAssetPath(string shortName) =>
-        $"Fuser/Content/Audio/Songs/{shortName}/{shortName}bs/Meta_{shortName}bs.uasset";
+    public static string BassCelAssetPath(string shortName) => CelAssetPath(shortName, "bs");
+
+    /// <summary>The <c>SongCelData</c> of one part: <c>bt</c> (beat), <c>bs</c> (bass), <c>lp</c> (loop) or <c>ld</c> (lead).</summary>
+    public static string CelAssetPath(string shortName, string cel) =>
+        $"Fuser/Content/Audio/Songs/{shortName}/{shortName}{cel}/Meta_{shortName}{cel}.uasset";
 
     public static UObject LoadFirstExport(IFileProvider provider, string assetPath)
     {

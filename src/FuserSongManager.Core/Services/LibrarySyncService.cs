@@ -154,6 +154,8 @@ public sealed class LibrarySyncService(ILibraryScanner scanner, ISongMetadataRea
         return song.WithFileState(item.Pak) with
         {
             Metadata = result.Metadata,
+            // Never null after a read, so a song is not read again only because a part has no instrument.
+            Instruments = result.Instruments ?? SongInstruments.Unknown,
             ReadStatus = result.Status,
             ReadError = result.Error,
             FileSize = item.Pak.Size,
@@ -182,7 +184,7 @@ internal sealed record SyncPlan(
             {
                 toRead.Add(new PendingRead(pak, null));
             }
-            else if (forceReread || song.FileSize != pak.Size || song.FileModifiedUtc != pak.ModifiedUtc)
+            else if (forceReread || song.FileSize != pak.Size || song.FileModifiedUtc != pak.ModifiedUtc || NeedsInstruments(song))
             {
                 // Also covers rows imported from v1, which have no size or date yet.
                 toRead.Add(new PendingRead(pak, song));
@@ -203,6 +205,12 @@ internal sealed record SyncPlan(
 
         return new SyncPlan(toRead, updated, removed, unchanged);
     }
+
+    /// <summary>
+    /// Rows saved before the instruments were stored are read once more to get them. Failed reads are not
+    /// retried here: they only get read again when the pak changes or on a full rescan.
+    /// </summary>
+    private static bool NeedsInstruments(Song song) => song.Instruments is null && song.ReadStatus != ReadStatus.Failed;
 }
 
 internal static class SongFileStateExtensions

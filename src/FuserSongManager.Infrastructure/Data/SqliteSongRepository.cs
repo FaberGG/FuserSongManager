@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using FuserSongManager.Core.Abstractions;
 using FuserSongManager.Core.Models;
 using Microsoft.Data.Sqlite;
@@ -9,12 +10,12 @@ public sealed class SqliteSongRepository(SqliteDatabase database) : ISongReposit
 {
     private const string Columns = """
         filename, song_name, artist, year, genre, key, mode, bpm, enabled, rating, notes, author,
-        relative_path, has_signature, file_size, file_modified_utc, read_status, read_error
+        relative_path, has_signature, file_size, file_modified_utc, read_status, read_error, extra_json
         """;
 
     private const string Values = """
         $filename, $song_name, $artist, $year, $genre, $key, $mode, $bpm, $enabled, $rating, $notes, $author,
-        $relative_path, $has_signature, $file_size, $file_modified_utc, $read_status, $read_error
+        $relative_path, $has_signature, $file_size, $file_modified_utc, $read_status, $read_error, $extra_json
         """;
 
     // On conflict only game metadata and file state change: rating, notes and author belong to the user.
@@ -26,7 +27,7 @@ public sealed class SqliteSongRepository(SqliteDatabase database) : ISongReposit
             enabled = excluded.enabled, relative_path = excluded.relative_path,
             has_signature = excluded.has_signature, file_size = excluded.file_size,
             file_modified_utc = excluded.file_modified_utc, read_status = excluded.read_status,
-            read_error = excluded.read_error;
+            read_error = excluded.read_error, extra_json = excluded.extra_json;
         """;
 
     private const string InsertIfMissingSql = $"INSERT OR IGNORE INTO songs ({Columns}) VALUES ({Values});";
@@ -125,6 +126,7 @@ public sealed class SqliteSongRepository(SqliteDatabase database) : ISongReposit
         command.Parameters.AddWithValue("$file_modified_utc", Db(song.FileModifiedUtc?.ToString("O", CultureInfo.InvariantCulture)));
         command.Parameters.AddWithValue("$read_status", ReadStatusToDb(song.ReadStatus));
         command.Parameters.AddWithValue("$read_error", Db(song.ReadError));
+        command.Parameters.AddWithValue("$extra_json", Db(ExtraToDb(song)));
     }
 
     private static Song ReadSong(SqliteDataReader r) => new()
@@ -148,7 +150,31 @@ public sealed class SqliteSongRepository(SqliteDatabase database) : ISongReposit
         FileModifiedUtc = r.IsDBNull(15) ? null : DateTime.Parse(r.GetString(15), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
         ReadStatus = ReadStatusFromDb(r.GetString(16)),
         ReadError = NullableString(r, 17),
+        Instruments = ExtraFromDb(NullableString(r, 18))?.Instruments,
     };
+
+    // Scan data that is not one of the v1 columns lives in extra_json, so adding some needs no migration.
+    private sealed record Extra(SongInstruments? Instruments);
+
+    private static readonly JsonSerializerOptions ExtraJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private static string? ExtraToDb(Song song) =>
+        song.Instruments is null ? null : JsonSerializer.Serialize(new Extra(song.Instruments), ExtraJson);
+
+    private static Extra? ExtraFromDb(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return null;
+        try
+        {
+            return JsonSerializer.Deserialize<Extra>(json, ExtraJson);
+        }
+        catch (JsonException)
+        {
+            // Unreadable extras are dropped; the next sync reads the pak again and writes them back.
+            return null;
+        }
+    }
 
     private static string ReadStatusToDb(ReadStatus status) => status switch
     {
