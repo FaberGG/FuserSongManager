@@ -44,6 +44,8 @@ New-Item -ItemType Directory $staging | Out-Null
 Copy-Item (Join-Path $publish 'FuserSongManager.exe') $staging
 Copy-Item (Join-Path $PSScriptRoot 'README-portable.txt') (Join-Path $staging 'README.txt')
 Copy-Item (Join-Path $PSScriptRoot 'THIRD-PARTY-NOTICES.txt') $staging
+# The font's license has to travel with it.
+Copy-Item (Join-Path $PSScriptRoot '..\src\FuserSongManager.UI\Assets\Fonts\OFL-KumbhSans.txt') $staging
 
 New-Item -ItemType Directory -Force $Output | Out-Null
 $zip = Join-Path (Resolve-Path $Output) "FuserSongManager-$version-win-x64.zip"

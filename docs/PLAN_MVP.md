@@ -342,6 +342,59 @@ Cada fase termina en algo que se puede ejecutar y probar. Las fases 1 y 2 no dep
 - Probarlo con DLC parcheados.
 - Escucharlo a mano, porque las pruebas automáticas no oyen.
 
+## Después del MVP: interfaz al estilo del crate de Fuser
+
+> **Estado (23/10/2026): implementado** a partir del prototipo HTML que el usuario aprobó, con los cambios que pidió. Las capturas de referencia del juego están en `imagenes-referencia-interfaz-fuser/`.
+
+**Pantalla:**
+- **Fondo:** un cielo nocturno desenfocado (control `NightSky`), dibujado con degradados y estrellas suaves, sin imágenes. Los paneles son de un morado oscuro translúcido con esquinas de 6–8 px.
+- **Fuente:** Kumbh Sans (OFL), incluida en la app.
+- **Cabecera:** título, búsqueda, ayuda (atajos), ajustes, un menú ⋯ (importar, importar desactivadas, reescanear, releer todo) y "Play Fuser" arriba a la derecha.
+- **Filtros:**
+  - Pestañas All / Enabled / Disabled / With problems, con su número y sin iconos. "With problems" solo aparece si hay alguna canción con problemas.
+  - Listas desplegables de orden, género y puntuación.
+- **Cuadrícula de portadas:**
+  - Al pasar el ratón, la portada crece y muestra "Género · Año" y los iconos de las cuatro partes.
+  - Las desactivadas salen oscurecidas y con la etiqueta DISABLED; las que tienen problemas, con un aviso.
+  - La ✓ solo marca la selección. Ctrl+clic y Mayús+clic seleccionan varias.
+- **Panel lateral:**
+  - Portada, etiquetas de género, año, BPM y tonalidad.
+  - Reproductor con la barra de compases (una marca por compás y una mayor por frase) y las cuatro partes como discos con el color y el icono del instrumento, que giran mientras suenan.
+  - Puntuación, autor, notas, archivo y activar o desactivar.
+  - Con varias canciones seleccionadas, ofrece activar o desactivar todas.
+- **Atajos:** Z (reproducción automática, se guarda en `settings.json`), Espacio, Enter, flechas, Ctrl+A, Ctrl+F, Ctrl+I, F5 y Esc. La barra inferior los muestra como teclas.
+- **Hover:** control `SweepFill` en botones, pestañas, listas y opciones. El color aparece al instante y, al salir, se retira hacia la derecha con una ola en el borde (seno animado, ~420 ms). El acento es violeta en la biblioteca, coral en los diálogos y azul en las opciones. La opción elegida va en magenta.
+- **Diálogos, ajustes y primer arranque:** con el mismo estilo, como el diálogo "Offline" del juego.
+
+**Datos nuevos:**
+- **Instrumento de cada parte.**
+  - Se lee el `Instrument` del `SongCelData` de bt/bs/lp/ld. Los valores reales son Drums, Guitar, Synth, Sampler, Strings, Horns, Vocal y None.
+  - Se guarda en la columna `extra_json`, que existía desde la migración 1 y no se usaba, así que no hizo falta otra migración.
+  - Las filas guardadas sin instrumentos se releen una vez al sincronizar (unos 2 s para 254 canciones). Las lecturas fallidas no se reintentan por esto.
+- **Iconos:**
+  - Son los del juego que aportó el usuario (PNG de 96 px), vectorizados con Potrace a una ruta de 24×24 cada uno (`Themes/InstrumentIcons.axaml`).
+  - El bajo usa la guitarra ("Bass guitar"). Synth usa el teclado de piano, Sampler el tocadiscos, Horns la trompeta y Strings el violín (asociación confirmada por el usuario).
+
+**Reproducción en bucle:** el mezclador vuelve al inicio sin corte (`StemMixer.Loop`). Los compases salen de la duración y el BPM: 4 tiempos por compás y 8 compases por frase.
+
+**Cuadrícula virtualizada:**
+- Se divide en filas (`TileRow`), y solo se crean las filas visibles.
+- Las miniaturas (288 px) se cargan al aparecer cada tarjeta, como mucho dos a la vez, desde la caché de portadas.
+
+**Corregido al probar:**
+- **Tarjetas sin portada a media altura.** Los botones de Fluent se centran verticalmente, así que esas tarjetas no llenaban la celda.
+- **Fondos de Fluent.** Fluent pinta el presentador de contenido en cada estado (hover, pulsado, seleccionado) con estilos que ganan a uno genérico, así que se anulan estado por estado.
+- **Esc en la búsqueda.** No devolvía el foco a la cuadrícula.
+- **Giro de los discos.** Avalonia no anima `RenderTransform` con fotogramas clave; cada disco tiene su propio `RotateTransform`.
+
+**Verificado:**
+- Pruebas: 185 en total (55 de Core, 73 de Infrastructure y 57 de UI), entre ellas el barrido del hover, la selección con Ctrl/Mayús, las flechas, Enter, la reproducción automática, los compases y frases, el bucle del mezclador, los instrumentos de los paks de muestra, el guardado de `extra_json` y las capturas de la ventana.
+- **Biblioteca real**, usada en una copia con enlaces duros:
+  - Se ven las 252 canciones con su portada (había 256 paks; 4 son duplicados).
+  - Con la versión publicada, la lista aparece en ~0,8 s (sin el juego abierto).
+
+**Pendiente:** confirmar a ojo el tono de los colores y la velocidad del barrido en pantalla real.
+
 ## 5. Orden de trabajo y dependencias
 
 ```

@@ -3,9 +3,7 @@ Each is used under the license shown; full texts are at the linked project or in
 
 Avalonia                                                12.1.4         MIT                    https://avaloniaui.net/
 Avalonia.Angle.Windows.Natives                          2.1.27548.20260419 BSD-3-Clause (ANGLE)   https://avaloniaui.net/
-Avalonia.Controls.DataGrid                              12.1.2         MIT                    https://avaloniaui.net/
 Avalonia.Desktop                                        12.1.4         MIT                    https://avaloniaui.net/
-Avalonia.Fonts.Inter                                    12.1.4         MIT                    https://avaloniaui.net/
 Avalonia.HarfBuzz                                       12.1.4         MIT                    https://avaloniaui.net/
 Avalonia.Remote.Protocol                                12.1.4         MIT                    https://avaloniaui.net/
 Avalonia.Skia                                           12.1.4         MIT                    https://avaloniaui.net/
@@ -64,6 +62,14 @@ VGAudio                                                 2.2.1          MIT      
 Zlib-ng.NET                                             1.2.0          MIT                    
 ZstdSharp.Port                                          0.8.8          MIT                    https://github.com/oleg-st/ZstdSharp
 
-The Inter font included by Avalonia.Fonts.Inter is licensed under the SIL Open Font License 1.1: https://github.com/rsms/inter
 The .NET runtime bundled in the executable is MIT licensed: https://github.com/dotnet/runtime
 The MOGG decryption follows moggcrypt as included in FuserCustomSongCreator (https://github.com/NarrikSynthfox/FuserCustomSongCreator).
+
+Other material included in the app:
+
+Kumbh Sans font                    Copyright 2020 The KumbhSans Project Authors (https://github.com/xconsau/KumbhSans)
+                                   SIL Open Font License 1.1 (full text in OFL-KumbhSans.txt next to this file)
+Settings icon                      Google Material Icons, Apache License 2.0 (https://github.com/google/material-design-icons)
+Instrument icons                   Traced from the instrument icons of the game FUSER (Harmonix Music Systems / NCSoft).
+                                   They belong to their owners, are not covered by any license above, and are used only so the
+                                   app shows each part the way the game does.

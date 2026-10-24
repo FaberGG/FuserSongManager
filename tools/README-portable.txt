@@ -1,10 +1,11 @@
 Fuser Song Manager 2
 ====================
 
-Manages your library of Fuser custom songs: see every song with its metadata and album art,
-listen to it (with each part - beat, bass, loop, lead - switchable on and off), search and filter,
-rate and annotate songs, enable or disable them, import new ones from .zip/.rar/.7z archives,
-and start the game.
+Manages your library of Fuser custom songs, in a look inspired by the game's crate: every song as
+its album art, the selected one in a side panel where you can listen to it in a loop (with each
+part - beat, bass, loop, lead - on its own disc, switchable on and off), rate it and add notes.
+Search and filter, enable or disable songs, import new ones from .zip/.rar/.7z archives, and start
+the game.
 
 Requirements
 ------------
@@ -35,10 +36,20 @@ Where your data is
 Your songs stay where they are: Fuser\Content\Paks\custom_songs (enabled) and
 Fuser\Content\Paks\disabled_songs (disabled).
 
+Keyboard
+--------
+Z            autoplay on/off: the song plays as soon as you select it
+Space        play / pause
+Enter        enable or disable the selected songs
+Arrow keys   move between songs; Ctrl+click and Shift+click select several; Ctrl+A selects all
+Ctrl+F       search          Ctrl+I   import          F5   rescan          Esc   clear the selection
+
 Good to know
 ------------
 - Songs cannot be enabled, disabled or imported while Fuser is running.
 - A song needs both its .pak and its .sig file to be enabled.
-- The preview plays the song's parts as recorded, mixed together; the game adds its own effects on top.
-  Audio is only played inside the app, never written to files.
+- The preview loops like the game does (four phrases of eight bars) and plays the parts as recorded,
+  mixed together; the game adds its own effects on top. Audio is only played inside the app, never
+  written to files.
+- The first start after updating reads every song once more, to learn the instrument of each part.
 - If something goes wrong, the log file says what happened and which file was involved.
