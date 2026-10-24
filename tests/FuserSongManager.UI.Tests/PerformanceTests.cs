@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Avalonia.Collections;
 using Avalonia.Headless.XUnit;
 using FuserSongManager.Core.Models;
 using FuserSongManager.UI.ViewModels;
@@ -37,12 +36,12 @@ public sealed class PerformanceTests(ITestOutputHelper output) : IDisposable
 
         watch.Restart();
         vm.ClearFiltersCommand.Execute(null);
-        vm.Songs.SortDescriptions.Add(DataGridSortDescription.FromPath(nameof(SongRowViewModel.TitleSortKey)));
-        _ = vm.Songs.Count;
+        vm.SelectedSort = vm.SortOptions.Single(o => o.Value == SongSort.Artist);
+        vm.SelectedSort = vm.SortOptions.Single(o => o.Value == SongSort.Title);
         var sort = watch.Elapsed;
 
         output.WriteLine($"search {search.TotalMilliseconds:0} ms, filter {filter.TotalMilliseconds:0} ms, sort {sort.TotalMilliseconds:0} ms");
-        Assert.Equal("Title 0", ((SongRowViewModel)vm.Songs[0]!).Title.Replace("The ", ""));
+        Assert.Equal("Title 0", vm.VisibleSongs[0].Title.Replace("The ", ""));
         Assert.True(search < TimeSpan.FromMilliseconds(200), $"search took {search.TotalMilliseconds} ms");
         Assert.True(filter < TimeSpan.FromMilliseconds(200), $"filter took {filter.TotalMilliseconds} ms");
         Assert.True(sort < TimeSpan.FromMilliseconds(300), $"sort took {sort.TotalMilliseconds} ms");

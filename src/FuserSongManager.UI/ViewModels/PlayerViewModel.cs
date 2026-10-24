@@ -15,28 +15,44 @@ public enum PlayerState
     Unavailable,
 }
 
-/// <summary>One part of the song with its on/off switch.</summary>
-public sealed partial class StemToggleViewModel(StemKind kind, Action<StemKind, bool> onChanged) : ViewModelBase
+/// <summary>One part of the song with its on/off switch, shown as a disc like in the game.</summary>
+public sealed partial class StemToggleViewModel(StemKind kind, string? instrument, Action<StemKind, bool> onChanged) : ViewModelBase
 {
     public StemKind Kind { get; } = kind;
     public string Name { get; } = kind.ToString();
 
+    /// <summary>The game's instrument name for this part ("Drums", "Synth"…), or null if unknown.</summary>
+    public string? Instrument { get; } = instrument;
+    public string InstrumentName => Display.Instrument(Kind, Instrument);
+    public string? IconKey => Display.InstrumentIconKey(Instrument);
+
     /// <summary>False when the song has no audio for this part (e.g. the author left the bass empty).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ToolTip), nameof(IsSpinning))]
     public partial bool IsAvailable { get; set; } = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSpinning), nameof(ToolTip))]
     public partial bool IsOn { get; set; } = true;
 
-    public string ToolTip => IsAvailable ? $"Turn the {Name.ToLowerInvariant()} on or off" : $"This song has no {Name.ToLowerInvariant()} part";
+    /// <summary>Set by the player: the disc turns while its part is heard.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSpinning))]
+    public partial bool IsPlaying { get; set; }
+
+    public bool IsSpinning => IsPlaying && IsOn && IsAvailable;
+
+    public string ToolTip =>
+        !IsAvailable ? $"This song has no {Name.ToLowerInvariant()} part"
+        : IsOn ? $"Mute the {Name.ToLowerInvariant()}"
+        : $"Turn the {Name.ToLowerInvariant()} back on";
 
     partial void OnIsOnChanged(bool value) => onChanged(Kind, value);
-    partial void OnIsAvailableChanged(bool value) => OnPropertyChanged(nameof(ToolTip));
 }
 
 /// <summary>
-/// Preview of a song (RF-PEN-13): its four parts played together, each of which can be turned off,
-/// like mixing in the game. The audio is read from the pak the first time play is pressed.
+/// Preview of a song (RF-PEN-13): its four parts played together and looped, each of which can be turned
+/// off, like mixing in the game. The audio is read from the pak the first time play is pressed.
 /// </summary>
 public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
 {
@@ -51,38 +67,70 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     private volatile PlaybackEndedEventArgs? _ended;
     private bool _syncingPosition;
 
-    public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log)
+    public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log,
+        SongInstruments? instruments = null, int? bpm = null)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
         _createPlayer = createPlayer;
         _log = log;
-        Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, OnStemToggled)).ToList();
+        Bpm = bpm is > 0 ? bpm : null;
+        Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, instruments?.For(kind), OnStemToggled)).ToList();
     }
+
+    /// <summary>Beats per minute, to count bars; null when the pak does not say.</summary>
+    public int? Bpm { get; }
 
     public IReadOnlyList<StemToggleViewModel> Stems { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PlayPauseText), nameof(IsPlaying), nameof(CanSeek))]
+    [NotifyPropertyChangedFor(nameof(PlayPauseText), nameof(IsPlaying), nameof(IsLoading), nameof(CanSeek), nameof(BarText))]
     [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand), nameof(StopCommand))]
     public partial PlayerState State { get; private set; } = PlayerState.Idle;
+
+    partial void OnStateChanged(PlayerState value)
+    {
+        foreach (var stem in Stems)
+            stem.IsPlaying = value == PlayerState.Playing;
+    }
 
     /// <summary>Why the preview cannot play, or what went wrong.</summary>
     [ObservableProperty]
     public partial string? Message { get; private set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TimeText))]
+    [NotifyPropertyChangedFor(nameof(TimeText), nameof(CurrentBar), nameof(CurrentPhrase), nameof(BarText))]
     public partial double PositionSeconds { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TimeText))]
+    [NotifyPropertyChangedFor(nameof(TimeText), nameof(BarCount), nameof(PhraseCount), nameof(CurrentBar), nameof(BarText))]
     public partial double DurationSeconds { get; private set; }
 
     public bool IsPlaying => State == PlayerState.Playing;
+    public bool IsLoading => State == PlayerState.Loading;
     public bool CanSeek => State is PlayerState.Playing or PlayerState.Paused;
-    public string PlayPauseText => State == PlayerState.Playing ? "❚❚  Pause" : State == PlayerState.Loading ? "Loading…" : "▶  Play";
+    public string PlayPauseText => State == PlayerState.Playing ? "Pause" : State == PlayerState.Loading ? "Loading…" : "Play";
     public string TimeText => $"{Format(PositionSeconds)} / {Format(DurationSeconds)}";
+
+    /// <summary>A bar is four beats. Fuser songs are 32 bars: four phrases of eight.</summary>
+    public const int BarsPerPhrase = 8;
+
+    private double? BarSeconds => Bpm is { } bpm ? 4 * 60.0 / bpm : null;
+
+    /// <summary>Bars in the song, from its length and tempo; 0 until the audio is loaded or without a tempo.</summary>
+    public int BarCount => BarSeconds is { } bar && DurationSeconds > 0 ? Math.Max(1, (int)Math.Round(DurationSeconds / bar)) : 0;
+
+    /// <summary>1-based bar being played.</summary>
+    public int CurrentBar => BarSeconds is { } bar && BarCount > 0 ? Math.Clamp((int)(PositionSeconds / bar) + 1, 1, BarCount) : 0;
+
+    public int PhraseCount => (BarCount + BarsPerPhrase - 1) / BarsPerPhrase;
+    public int CurrentPhrase => (CurrentBar - 1) / BarsPerPhrase + 1;
+
+    /// <summary>"Bar 12 of 32 · Phrase 2 of 4", or a hint before the song is loaded.</summary>
+    public string BarText =>
+        State == PlayerState.Loading ? "Reading the song…"
+        : BarCount == 0 ? (State == PlayerState.Idle ? "Plays in a loop, like in the game" : "")
+        : $"Bar {CurrentBar} of {BarCount} · Phrase {CurrentPhrase} of {PhraseCount}";
 
     private static string Format(double seconds) => TimeSpan.FromSeconds(Math.Max(0, seconds)).ToString(@"m\:ss");
 
@@ -117,6 +165,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
                 return;
 
             var player = _createPlayer();
+            player.Loop = true;
             player.Load(audio);
             player.PlaybackEnded += (_, e) => _ended = e;
             _player = player;

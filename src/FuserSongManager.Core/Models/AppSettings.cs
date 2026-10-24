@@ -15,6 +15,9 @@ public sealed record AppSettings
 
     /// <summary>Paks read at the same time during a scan. Null uses <see cref="LibraryPaths.DefaultParallelism"/>.</summary>
     public int? ScanParallelism { get; init; }
+
+    /// <summary>Starts the preview as soon as a song is selected (toggled with Z in the library).</summary>
+    public bool AutoplayPreview { get; init; }
 }
 
 /// <summary>Folders derived from the Fuser install folder.</summary>

@@ -71,6 +71,12 @@ public sealed class AppServices
     /// <summary>The library folders, or null while the Fuser folder is not set or not found (e.g. a disconnected drive).</summary>
     public LibraryPaths? Paths => IsConfigured ? LibraryPaths.FromSettings(Settings) : null;
 
+    /// <summary>Absolute path of a song's .pak, or null if unknown (imported from v1 and not scanned, or no Fuser folder).</summary>
+    public string? FullPathOf(Song song) =>
+        song.RelativePath is { } relative && Paths is { } paths
+            ? Path.Combine(paths.RootOf(song.Location), relative)
+            : null;
+
     public void SaveSettings(AppSettings settings)
     {
         _settingsStore.Save(settings);

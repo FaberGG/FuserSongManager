@@ -46,7 +46,7 @@ public sealed partial class SongDetailViewModel : ViewModelBase
                 // The path is resolved when play is pressed: the song may have been enabled or disabled meanwhile.
                 Player = new PlayerViewModel(row.FileName,
                     () => media.ReadAudio(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode),
-                    createPlayer, services.Log);
+                    createPlayer, services.Log, row.Song.Instruments, row.Song.Metadata.Bpm);
             }
         }
         else
@@ -111,6 +111,7 @@ public sealed partial class SongDetailViewModel : ViewModelBase
     [
         nameof(Title), nameof(Artist), nameof(Year), nameof(Genre), nameof(Key), nameof(Mode), nameof(Bpm),
         nameof(State), nameof(FileName), nameof(ReadStatus), nameof(Problem), nameof(HasProblem), nameof(Location), nameof(FullPath),
+        nameof(KeyAndMode), nameof(BpmText), nameof(IsEnabled), nameof(EnableActionText), nameof(FolderName),
     ];
 
     private void OnRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -138,10 +139,19 @@ public sealed partial class SongDetailViewModel : ViewModelBase
     public string Location => FullPath ?? "Not scanned yet";
 
     /// <summary>Absolute path of the .pak, or null if unknown (song imported from v1 and not scanned).</summary>
-    public string? FullPath =>
-        Song.RelativePath is { } relative && _services.Paths is { } paths
-            ? Path.Combine(paths.RootOf(Song.Location), relative)
-            : null;
+    public string? FullPath => _services.FullPathOf(Song);
+
+    /// <summary>"B♭ Minor" for the key chip; empty when neither is known.</summary>
+    public string KeyAndMode => $"{Row.Key} {Row.Mode}".Trim();
+
+    public string BpmText => Song.Metadata.Bpm is { } bpm ? $"{bpm} BPM" : "";
+
+    public bool IsEnabled => Row.IsEnabled;
+
+    public string EnableActionText => Row.IsEnabled ? "Disable song" : "Enable song";
+
+    /// <summary>The game folder the song is in, as the user sees it in Explorer.</summary>
+    public string FolderName => Row.IsEnabled ? "custom_songs" : "disabled_songs";
 
     [ObservableProperty]
     public partial int Rating { get; set; }

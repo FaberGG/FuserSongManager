@@ -107,13 +107,16 @@ public sealed class InMemorySettingsStore(AppSettings settings) : ISettingsStore
 
 public sealed class FakeReader : ISongMetadataReader
 {
+    /// <summary>What every readable fake pak says its parts are played with.</summary>
+    public static readonly SongInstruments Instruments = new("Drums", "Guitar", "Synth", "Vocal");
+
     public Dictionary<string, SongMetadata> Metadata { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public SongReadResult Read(string pakPath)
     {
         var name = Path.GetFileNameWithoutExtension(pakPath);
         return Metadata.TryGetValue(name, out var metadata)
-            ? new SongReadResult(metadata, ReadStatus.Ok, null)
+            ? new SongReadResult(metadata, ReadStatus.Ok, null, Instruments: Instruments)
             : SongReadResult.Failed("The pak is not a valid Fuser song.");
     }
 }

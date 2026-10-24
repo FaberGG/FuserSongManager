@@ -30,7 +30,7 @@ public sealed class MainViewModelTests : IDisposable
 
     private static SongRowViewModel Row(MainViewModel vm, string fileName) => vm.Rows.Single(r => r.FileName == fileName);
 
-    private static List<string> VisibleTitles(MainViewModel vm) => vm.Songs.Cast<SongRowViewModel>().Select(r => r.Title).ToList();
+    private static List<string> VisibleTitles(MainViewModel vm) => vm.VisibleSongs.Select(r => r.Title).ToList();
 
     [AvaloniaFact]
     public async Task Startup_scans_the_library_and_shows_every_song()
@@ -64,7 +64,7 @@ public sealed class MainViewModelTests : IDisposable
         using var vm = await StartAsync();
 
         vm.SearchText = "killers";
-        Assert.Equal(4, vm.Songs.Count);   // not yet: waits for the user to stop typing
+        Assert.Equal(4, vm.VisibleSongs.Count);   // not yet: waits for the user to stop typing
         await Task.Delay(MainViewModel.SearchDelay * 3);
 
         Assert.Equal(["Mr. Brightside"], VisibleTitles(vm));
@@ -81,14 +81,14 @@ public sealed class MainViewModelTests : IDisposable
         using var vm = await StartAsync();
 
         vm.SelectedGenre = vm.GenreOptions.Single(o => o.Value == Genre.Rock);
-        Assert.Equal(2, vm.Songs.Count);
+        Assert.Equal(2, vm.VisibleSongs.Count);
         vm.SelectedStatus = vm.StatusOptions.Single(o => o.Label == "Disabled");
         Assert.Equal(["A Zombie Song"], VisibleTitles(vm));
         Assert.True(vm.ClearFiltersCommand.CanExecute(null));
 
         vm.ClearFiltersCommand.Execute(null);
 
-        Assert.Equal(4, vm.Songs.Count);
+        Assert.Equal(4, vm.VisibleSongs.Count);
         Assert.Equal("4 songs", vm.CountText);
         Assert.False(vm.ClearFiltersCommand.CanExecute(null));
     }
@@ -98,10 +98,14 @@ public sealed class MainViewModelTests : IDisposable
     {
         using var vm = await StartAsync();
 
-        vm.Songs.SortDescriptions.Add(Avalonia.Collections.DataGridSortDescription.FromPath(nameof(SongRowViewModel.TitleSortKey)));
-
-        // "A Zombie Song" sorts as "Zombie Song".
+        // Title is the default order. "A Zombie Song" sorts as "Zombie Song".
         Assert.Equal(["Africa", "Around the World", "Mr. Brightside", "A Zombie Song"], VisibleTitles(vm));
+
+        vm.SelectedSort = vm.SortOptions.Single(o => o.Value == SongSort.Year);
+        var years = vm.VisibleSongs.Select(r => r.Year ?? int.MaxValue).ToList();
+        Assert.Equal(years.Order(), years);
+        // The grid shows the same order, cut into rows.
+        Assert.Equal(VisibleTitles(vm), vm.TileRows.SelectMany(r => r.Songs).Select(s => s.Title).ToList());
     }
 
     [AvaloniaFact]

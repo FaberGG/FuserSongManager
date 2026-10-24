@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text;
-using Avalonia.Collections;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FuserSongManager.Core.Models;
@@ -14,9 +14,43 @@ public sealed record Option<T>(string Label, T Value)
     public override string ToString() => Label;
 }
 
+public enum SongSort
+{
+    Title,
+    Artist,
+    Genre,
+    Year,
+    Bpm,
+    Rating,
+}
+
+/// <summary>One of the tabs over the library (All, Enabled, Disabled, With problems) with its song count.</summary>
+public sealed partial class StatusTabViewModel(string label, StatusFilter value, Action<StatusFilter> select) : ViewModelBase
+{
+    public string Label { get; } = label;
+    public StatusFilter Value { get; } = value;
+
+    [ObservableProperty]
+    public partial int Count { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
+
+    /// <summary>The problems tab only shows up when some song has one.</summary>
+    [ObservableProperty]
+    public partial bool IsVisible { get; set; } = true;
+
+    [RelayCommand]
+    private void Select() => select(Value);
+}
+
+/// <summary>One row of tiles. The grid is a list of rows so only the rows on screen are created.</summary>
+public sealed record TileRow(IReadOnlyList<SongRowViewModel> Songs, int Columns);
+
 /// <summary>
-/// Main window: the song list with search and filters, the detail of the selected song, and the actions
-/// that change files (enable, disable, import), which run one at a time and never while the game is open.
+/// Main window: the song library as a grid of album art with search and filters, the detail of the selected
+/// song, and the actions that change files (enable, disable, import), which run one at a time and never while
+/// the game is open.
 /// </summary>
 public sealed partial class MainViewModel : ViewModelBase, IDisposable
 {
@@ -26,44 +60,72 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     private readonly AppServices _services;
     private readonly IDialogService _dialogs;
     private readonly IShellService _shell;
-    private ObservableCollection<SongRowViewModel> _rows = [];
+    private readonly List<SongRowViewModel> _rows = [];
     private readonly Dictionary<string, SongRowViewModel> _rowsByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _searchDelay;
     private IReadOnlyList<SongRowViewModel> _selection = [];
+    private SongRowViewModel? _anchor;
+    private bool _resettingFilters;
 
     public MainViewModel(AppServices services, IDialogService dialogs, IShellService shell)
     {
         _services = services;
         _dialogs = dialogs;
         _shell = shell;
-        Songs = CreateView(_rows);
+        Thumbnails = new ThumbnailLoader(services);
 
         GenreOptions = [new("All genres", null), .. Enum.GetValues<Genre>().Select(g => new Option<Genre?>(Display.Genre(g), g))];
         StatusOptions =
         [
-            new("All songs", StatusFilter.All),
+            new("All", StatusFilter.All),
             new("Enabled", StatusFilter.Enabled),
             new("Disabled", StatusFilter.Disabled),
             new("With problems", StatusFilter.WithProblems),
         ];
+        StatusTabs = [.. StatusOptions.Select(o => new StatusTabViewModel(o.Label, o.Value, v => SelectedStatus = StatusOptions.First(x => x.Value == v)))];
         RatingOptions = [new("Any rating", 0), .. Enumerable.Range(1, 5).Select(n => new Option<int>(Display.Stars(n) + (n < 5 ? " or more" : ""), n))];
+        SortOptions =
+        [
+            new("Sorted by Title", SongSort.Title),
+            new("Sorted by Artist", SongSort.Artist),
+            new("Sorted by Genre", SongSort.Genre),
+            new("Sorted by Year", SongSort.Year),
+            new("Sorted by BPM", SongSort.Bpm),
+            new("Sorted by Rating", SongSort.Rating),
+        ];
 
         SelectedGenre = GenreOptions[0];
         SelectedStatus = StatusOptions[0];
         SelectedRating = RatingOptions[0];
+        SelectedSort = SortOptions[0];
         SearchText = "";
+        IsAutoplayOn = services.Settings.AutoplayPreview;
     }
 
-    // ---- List, search and filters ----------------------------------------------------------
+    public ThumbnailLoader Thumbnails { get; }
 
-    /// <summary>Sorted and filtered view of every song; the grid sorts it when a header is clicked.</summary>
+    // ---- List, search, filters and sorting -------------------------------------------------
+
+    /// <summary>The songs that pass the search and filters, in the chosen order.</summary>
     [ObservableProperty]
-    public partial DataGridCollectionView Songs { get; private set; }
+    public partial IReadOnlyList<SongRowViewModel> VisibleSongs { get; private set; } = [];
+
+    /// <summary><see cref="VisibleSongs"/> cut into rows of <see cref="Columns"/> tiles.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<TileRow> TileRows { get; private set; } = [];
+
+    /// <summary>Tiles per row; the window sets it from its width.</summary>
+    [ObservableProperty]
+    public partial int Columns { get; set; } = 6;
+
+    partial void OnColumnsChanged(int value) => BuildTileRows();
 
     public IReadOnlyList<Option<Genre?>> GenreOptions { get; }
     public IReadOnlyList<Option<StatusFilter>> StatusOptions { get; }
+    public IReadOnlyList<StatusTabViewModel> StatusTabs { get; }
     public IReadOnlyList<Option<int>> RatingOptions { get; }
+    public IReadOnlyList<Option<SongSort>> SortOptions { get; }
 
     [ObservableProperty]
     public partial string SearchText { get; set; }
@@ -76,6 +138,9 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     public partial Option<int> SelectedRating { get; set; }
+
+    [ObservableProperty]
+    public partial Option<SongSort> SelectedSort { get; set; }
 
     [ObservableProperty]
     public partial string CountText { get; private set; } = "";
@@ -91,9 +156,22 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     public bool HasFilter => !CurrentFilter.IsEmpty;
 
     partial void OnSearchTextChanged(string value) => _ = ApplyFilterAfterDelayAsync();
-    partial void OnSelectedGenreChanged(Option<Genre?> value) => ApplyFilter();
-    partial void OnSelectedStatusChanged(Option<StatusFilter> value) => ApplyFilter();
-    partial void OnSelectedRatingChanged(Option<int> value) => ApplyFilter();
+    partial void OnSelectedGenreChanged(Option<Genre?> value) => ApplyFilterUnlessResetting();
+    partial void OnSelectedRatingChanged(Option<int> value) => ApplyFilterUnlessResetting();
+    partial void OnSelectedSortChanged(Option<SongSort> value) => ApplyFilterUnlessResetting();
+
+    partial void OnSelectedStatusChanged(Option<StatusFilter> value)
+    {
+        foreach (var tab in StatusTabs)
+            tab.IsSelected = tab.Value == value?.Value;
+        ApplyFilterUnlessResetting();
+    }
+
+    private void ApplyFilterUnlessResetting()
+    {
+        if (!_resettingFilters)
+            ApplyFilter();
+    }
 
     /// <summary>Waits for a pause in typing so the list is not filtered on every key (RF-BUS-06).</summary>
     private async Task ApplyFilterAfterDelayAsync()
@@ -113,57 +191,79 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
 
     public void ApplyFilter()
     {
-        var filter = CurrentFilter;
-        if (filter.IsEmpty)
-        {
-            Songs.Filter = null;
-        }
-        else
-        {
-            var matches = filter.ToPredicate();
-            Songs.Filter = item => matches(((SongRowViewModel)item).Song);
-        }
+        var matches = CurrentFilter.ToPredicate();
+        VisibleSongs = [.. Sort(_rows.Where(r => matches(r.Song)), SelectedSort?.Value ?? SongSort.Title)];
+        BuildTileRows();
         OnPropertyChanged(nameof(HasFilter));
         ClearFiltersCommand.NotifyCanExecuteChanged();
-        UpdateCount();
+        UpdateCounts();
     }
 
-    private void UpdateCount()
+    /// <summary>Title and artist ignore a leading "The"/"A", like the game; ties fall back to the title.</summary>
+    private static IEnumerable<SongRowViewModel> Sort(IEnumerable<SongRowViewModel> rows, SongSort sort)
     {
-        CountText = Songs.Filter is null
-            ? Display.Songs(_rows.Count)
-            : $"{Songs.Count} of {Display.Songs(_rows.Count)}";
+        var text = StringComparer.CurrentCultureIgnoreCase;
+        return sort switch
+        {
+            SongSort.Artist => rows.OrderBy(r => r.ArtistSortKey.Length == 0).ThenBy(r => r.ArtistSortKey, text).ThenBy(r => r.TitleSortKey, text),
+            SongSort.Genre => rows.OrderBy(r => r.Genre.Length == 0).ThenBy(r => r.Genre, text).ThenBy(r => r.TitleSortKey, text),
+            SongSort.Year => rows.OrderBy(r => r.Year is null).ThenBy(r => r.Year).ThenBy(r => r.TitleSortKey, text),
+            SongSort.Bpm => rows.OrderBy(r => r.Bpm is null).ThenBy(r => r.Bpm).ThenBy(r => r.TitleSortKey, text),
+            SongSort.Rating => rows.OrderByDescending(r => r.Rating).ThenBy(r => r.TitleSortKey, text),
+            _ => rows.OrderBy(r => r.TitleSortKey, text),
+        };
+    }
+
+    private void BuildTileRows()
+    {
+        var columns = Math.Max(1, Columns);
+        TileRows = [.. VisibleSongs.Chunk(columns).Select(chunk => new TileRow(chunk, columns))];
+    }
+
+    private void UpdateCounts()
+    {
+        var total = _rows.Count;
+        foreach (var tab in StatusTabs)
+        {
+            tab.Count = tab.Value switch
+            {
+                StatusFilter.Enabled => _rows.Count(r => r.IsEnabled),
+                StatusFilter.Disabled => _rows.Count(r => !r.IsEnabled),
+                StatusFilter.WithProblems => _rows.Count(r => r.HasProblem),
+                _ => total,
+            };
+            if (tab.Value == StatusFilter.WithProblems)
+                tab.IsVisible = tab.Count > 0 || tab.IsSelected;
+        }
+        CountText = VisibleSongs.Count == total ? Display.Songs(total) : $"{VisibleSongs.Count} of {Display.Songs(total)}";
         EmptyText =
-            _rows.Count == 0 ? (IsBusy ? null : "No songs yet. Use Import to add custom songs, or check the Fuser folder in Settings.")
-            : Songs.Count == 0 ? "No songs match the search and filters."
+            total == 0 ? (IsBusy ? null : "No songs yet. Use Import to add custom songs, or check the Fuser folder in Settings.")
+            : VisibleSongs.Count == 0 ? "No songs match the search and filters."
             : null;
     }
 
-    /// <summary>Shown over the list when it has no rows to show.</summary>
+    /// <summary>Shown over the grid when it has no tiles to show.</summary>
     [ObservableProperty]
     public partial string? EmptyText { get; private set; }
 
     [RelayCommand(CanExecute = nameof(HasFilter))]
     private void ClearFilters()
     {
-        SearchText = "";
-        SelectedGenre = GenreOptions[0];
-        SelectedStatus = StatusOptions[0];
-        SelectedRating = RatingOptions[0];
+        _resettingFilters = true;
+        try
+        {
+            SearchText = "";
+            SelectedGenre = GenreOptions[0];
+            SelectedStatus = StatusOptions[0];
+            SelectedRating = RatingOptions[0];
+        }
+        finally
+        {
+            _resettingFilters = false;
+        }
         // Apply now instead of after the search delay.
         _searchDelay?.Cancel();
         ApplyFilter();
-    }
-
-    /// <summary>
-    /// A collection view starts with its first item as "current", and the grid selects the current item:
-    /// clear it, so nothing is selected (and no pak is read for the detail panel) until the user picks a song.
-    /// </summary>
-    private static DataGridCollectionView CreateView(ObservableCollection<SongRowViewModel> rows)
-    {
-        var view = new DataGridCollectionView(rows);
-        view.MoveCurrentToPosition(-1);
-        return view;
     }
 
     // ---- Selection and detail --------------------------------------------------------------
@@ -174,21 +274,144 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     public partial SongDetailViewModel? Detail { get; private set; }
 
-    public void SetSelection(IEnumerable<SongRowViewModel> rows)
+    /// <summary>
+    /// A click on a tile: selects only that song, or with Ctrl adds or removes it, or with Shift selects the
+    /// range from the last clicked song (several songs can be enabled or disabled at once).
+    /// </summary>
+    public void Click(SongRowViewModel row, bool control = false, bool shift = false)
     {
-        _selection = rows.ToList();
+        if (shift && _anchor is not null)
+        {
+            var visible = VisibleSongs;
+            int from = IndexOf(visible, _anchor), to = IndexOf(visible, row);
+            if (from >= 0 && to >= 0)
+            {
+                var range = visible.Skip(Math.Min(from, to)).Take(Math.Abs(to - from) + 1);
+                SetSelection(control ? _selection.Union(range) : range, keepAnchor: true);
+                return;
+            }
+        }
+        if (control)
+        {
+            SetSelection(_selection.Contains(row) ? _selection.Where(r => r != row) : _selection.Append(row), keepAnchor: true);
+            _anchor = row;
+            return;
+        }
+        SetSelection([row]);
+    }
+
+    /// <summary>Moves the selection by <paramref name="delta"/> tiles (arrows: ±1, ±a row). Returns the new index.</summary>
+    public int MoveSelection(int delta)
+    {
+        var visible = VisibleSongs;
+        if (visible.Count == 0)
+            return -1;
+        var current = _anchor is null ? -1 : IndexOf(visible, _anchor);
+        var next = current < 0 ? 0 : Math.Clamp(current + delta, 0, visible.Count - 1);
+        SetSelection([visible[next]]);
+        return next;
+    }
+
+    private static int IndexOf(IReadOnlyList<SongRowViewModel> rows, SongRowViewModel row)
+    {
+        for (var i = 0; i < rows.Count; i++)
+            if (rows[i] == row)
+                return i;
+        return -1;
+    }
+
+    public void SetSelection(IEnumerable<SongRowViewModel> rows) => SetSelection(rows, keepAnchor: false);
+
+    private void SetSelection(IEnumerable<SongRowViewModel> rows, bool keepAnchor)
+    {
+        var selection = rows.Distinct().ToList();
+        foreach (var row in _selection.Except(selection))
+            row.IsSelected = false;
+        foreach (var row in selection)
+            row.IsSelected = true;
+        _selection = selection;
+        if (!keepAnchor)
+            _anchor = selection.Count > 0 ? selection[^1] : null;
+
         var single = _selection.Count == 1 ? _selection[0] : null;
         if (Detail?.Row != single)
         {
             Detail?.Detach();
             Detail = single is null ? null : new SongDetailViewModel(single, _services, _dialogs, _shell);
+            if (Detail?.Player is { } player && IsAutoplayOn)
+                _ = player.PlayPauseCommand.ExecuteAsync(null);
         }
         OnPropertyChanged(nameof(Selection));
         OnPropertyChanged(nameof(SelectionText));
+        OnPropertyChanged(nameof(HasMultipleSelection));
+        OnPropertyChanged(nameof(HasNoSelection));
         NotifyFileActionsChanged();
     }
 
     public string? SelectionText => _selection.Count > 1 ? $"{_selection.Count} songs selected" : null;
+
+    public bool HasMultipleSelection => _selection.Count > 1;
+
+    public bool HasNoSelection => _selection.Count == 0;
+
+    /// <summary>Selects every song shown (Ctrl+A).</summary>
+    public void SelectAllVisible() => SetSelection(VisibleSongs);
+
+    /// <summary>Enter: enables the selected songs, or disables them when they are all enabled.</summary>
+    [RelayCommand]
+    private Task ToggleSelectedEnabled() =>
+        _selection.Count == 0 ? Task.CompletedTask
+        : _selection.All(r => r.IsEnabled) ? DisableSelectedCommand.ExecuteAsync(null)
+        : EnableSelectedCommand.ExecuteAsync(null);
+
+    // ---- Preview ---------------------------------------------------------------------------
+
+    /// <summary>Plays the preview as soon as a song is selected (Z). Remembered between sessions.</summary>
+    [ObservableProperty]
+    public partial bool IsAutoplayOn { get; set; }
+
+    partial void OnIsAutoplayOnChanged(bool value)
+    {
+        if (_services.Settings.AutoplayPreview == value)
+            return;
+        try
+        {
+            _services.SaveSettings(_services.Settings with { AutoplayPreview = value });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not save the autoplay setting");
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleAutoplay() => IsAutoplayOn = !IsAutoplayOn;
+
+    public const string ShortcutsHelp = """
+        Z  Turn autoplay on or off: the song plays as soon as you select it
+        Space  Play or pause the selected song
+        Enter  Enable or disable the selected songs
+        Arrow keys  Move between songs
+        Ctrl+click, Shift+click  Select several songs
+        Ctrl+A  Select every song shown
+        Ctrl+F  Search
+        Ctrl+I  Import songs
+        F5  Rescan the library
+        Esc  Clear the selection
+
+        The preview loops like the game does: four phrases of eight bars. Click a disc to mute that part.
+        Songs cannot be enabled, disabled or imported while Fuser is running.
+        """;
+
+    [RelayCommand]
+    private Task ShowHelp() => _dialogs.ShowMessageAsync("Keyboard shortcuts", ShortcutsHelp);
+
+    /// <summary>Space: plays or pauses the selected song.</summary>
+    [RelayCommand]
+    private Task PlayPause() =>
+        Detail?.Player is { } player && player.PlayPauseCommand.CanExecute(null)
+            ? player.PlayPauseCommand.ExecuteAsync(null)
+            : Task.CompletedTask;
 
     // ---- Operation state -------------------------------------------------------------------
 
@@ -224,7 +447,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     partial void OnIsBusyChanged(bool value)
     {
         NotifyFileActionsChanged();
-        UpdateCount();
+        UpdateCounts();
     }
     partial void OnIsGameRunningChanged(bool value) => NotifyFileActionsChanged();
 
@@ -296,55 +519,38 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Re-reads the songs from the database and updates the rows in place, keeping sort and selection.</summary>
+    /// <summary>Re-reads the songs from the database and updates the tiles in place, keeping the selection.</summary>
     public async Task ReloadAsync()
     {
         var songs = await _services.Repository.GetAllAsync();
-        var changed = false;
 
         var current = songs.Select(s => s.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in _rows.Where(r => !current.Contains(r.FileName)).ToList())
+        var removed = _rows.Where(r => !current.Contains(r.FileName)).ToList();
+        foreach (var row in removed)
         {
             _rows.Remove(row);
             _rowsByName.Remove(row.FileName);
         }
 
-        var added = new List<SongRowViewModel>();
         foreach (var song in songs)
         {
             if (_rowsByName.TryGetValue(song.FileName, out var row))
             {
-                changed |= row.Update(song);
+                row.Update(song);
             }
             else
             {
-                row = new SongRowViewModel(song);
+                row = new SongRowViewModel(song) { Loader = Thumbnails };
                 _rowsByName.Add(song.FileName, row);
-                added.Add(row);
+                _rows.Add(row);
             }
         }
 
-        if (_rows.Count == 0 && added.Count > 0)
-        {
-            // First load: a new view over the full list instead of thousands of add notifications.
-            _rows = new ObservableCollection<SongRowViewModel>(added);
-            var view = CreateView(_rows);
-            view.Filter = Songs.Filter;
-            foreach (var sort in Songs.SortDescriptions)
-                view.SortDescriptions.Add(sort);
-            Songs = view;
-            OnPropertyChanged(nameof(Rows));
-        }
-        else
-        {
-            foreach (var row in added)
-                _rows.Add(row);
-        }
-
+        if (removed.Count > 0 && _selection.Intersect(removed).Any())
+            SetSelection(_selection.Except(removed));
+        OnPropertyChanged(nameof(Rows));
         // Rows updated in place may now match the filter differently (e.g. after enabling).
-        if (changed && Songs.Filter is not null)
-            Songs.Refresh();
-        UpdateCount();
+        ApplyFilter();
     }
 
     // ---- Scan ------------------------------------------------------------------------------

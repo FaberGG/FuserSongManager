@@ -52,4 +52,38 @@ public static class Display
     }
 
     public static string Songs(int count) => count == 1 ? "1 song" : $"{count} songs";
+
+    /// <summary>
+    /// The instrument of a part as the game labels it. The bass part's guitar is a bass guitar
+    /// (its <c>SubInstrument</c> is always <c>BassGuitar</c>). Null or "None" means the part has no instrument.
+    /// </summary>
+    public static string Instrument(StemKind part, string? instrument) => instrument switch
+    {
+        null or "" or "None" => "No instrument",
+        "Guitar" when part == StemKind.Bass => "Bass guitar",
+        "Vocal" => "Vocals",
+        "Keys" or "Piano" => "Keys",
+        _ => SplitWords(instrument),
+    };
+
+    /// <summary>
+    /// Resource key of the icon for an instrument (see Themes/InstrumentIcons.axaml), or null for none. The game's
+    /// icon set: drums, guitar (also the bass guitar), synth (piano keys), sampler (a turntable), horns (a trumpet),
+    /// strings (a violin) and vocals (a microphone).
+    /// </summary>
+    public static string? InstrumentIconKey(string? instrument) => instrument switch
+    {
+        "Drums" => "Icon.Drums",
+        "Guitar" or "BassGuitar" => "Icon.Guitar",
+        "Synth" or "Keys" or "Piano" => "Icon.Synth",
+        "Sampler" => "Icon.Sampler",
+        "Horns" or "Brass" => "Icon.Horns",
+        "Strings" => "Icon.Strings",
+        "Vocal" or "Vocals" => "Icon.Vocals",
+        _ => null,
+    };
+
+    /// <summary>"BassGuitar" → "Bass guitar".</summary>
+    private static string SplitWords(string name) =>
+        string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? " " + char.ToLowerInvariant(c) : c.ToString()));
 }

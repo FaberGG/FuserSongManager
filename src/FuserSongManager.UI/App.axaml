@@ -43,7 +43,6 @@
 
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <StyleInclude Source="avares://FuserSongManager/Themes/Theme.axaml" />
     </Application.Styles>
 </Application>
