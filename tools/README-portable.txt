@@ -4,8 +4,8 @@ Fuser Song Manager 2
 Manages your library of Fuser custom songs, in a look inspired by the game's crate: every song as
 its album art, the selected one in a side panel where you can listen to it in a loop (with each
 part - beat, bass, loop, lead - on its own disc, switchable on and off), rate it and add notes.
-Search and filter, enable or disable songs, import new ones from .zip/.rar/.7z archives, and start
-the game.
+Search and filter, enable or disable songs, import new ones from .zip/.rar/.7z archives (also a
+"download all" archive with each song's own .zip or .rar inside), and start the game.
 
 Requirements
 ------------

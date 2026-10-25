@@ -28,11 +28,11 @@
             <SolidColorBrush x:Key="Fsm.Error" Color="#FF8A8A" />
             <SolidColorBrush x:Key="Fsm.Gold" Color="#FFD24A" />
 
-            <!-- The four parts, in the colours of the game's discs. -->
-            <SolidColorBrush x:Key="Fsm.Part.Beat" Color="#9A6CFF" />
-            <SolidColorBrush x:Key="Fsm.Part.Bass" Color="#EF5AA8" />
-            <SolidColorBrush x:Key="Fsm.Part.Loop" Color="#F7C531" />
-            <SolidColorBrush x:Key="Fsm.Part.Lead" Color="#3FD17A" />
+            <!-- The four parts, in the colours of the game's discs (normal colour mode, not the colour-blind one). -->
+            <SolidColorBrush x:Key="Fsm.Part.Beat" Color="#00BADD" />
+            <SolidColorBrush x:Key="Fsm.Part.Bass" Color="#54CC1F" />
+            <SolidColorBrush x:Key="Fsm.Part.Loop" Color="#EBDF35" />
+            <SolidColorBrush x:Key="Fsm.Part.Lead" Color="#EE1E31" />
 
             <!-- Hover sweeps: violet in the library (crate), coral in dialogs, blue for list options. -->
             <LinearGradientBrush x:Key="Fsm.Sweep.Violet" StartPoint="0%,0%" EndPoint="100%,0%">

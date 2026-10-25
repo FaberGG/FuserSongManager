@@ -7,8 +7,9 @@ using SharpCompress.Readers;
 namespace FuserSongManager.Infrastructure.Files;
 
 /// <summary>
-/// Installs songs from .zip/.rar/.7z archives (any folder depth, several songs per archive) or from loose
-/// .pak files. Only complete .pak + .sig pairs are installed. Extraction goes to a private temp folder that
+/// Installs songs from .zip/.rar/.7z archives (any folder depth, several songs per archive, and archives
+/// inside archives, as download sites bundle several songs) or from loose .pak files. Only complete
+/// .pak + .sig pairs are installed. Extraction goes to a private temp folder that
 /// is always deleted afterwards (RF-IMP-09). Destination paths are built from file names only, never from
 /// archive paths, so a malicious archive cannot write outside the songs folders.
 /// </summary>
@@ -16,6 +17,11 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
 {
     private const string StagingSuffix = ".fsmtmp";
     private const string BackupSuffix = ".fsmbak";
+
+    /// <summary>The archive picked plus two levels of archives inside it; deeper ones are reported, not opened.</summary>
+    public const int MaxArchiveDepth = 3;
+
+    private static readonly string[] ArchiveExtensions = [".zip", ".rar", ".7z"];
 
     public Task<ImportResult> ImportAsync(
         IReadOnlyList<string> sources,
@@ -44,7 +50,7 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
 
                 var candidates = Path.GetExtension(source).Equals(".pak", StringComparison.OrdinalIgnoreCase)
                     ? FromLoosePak(source, issues)
-                    : FromArchive(source, Path.Combine(workDirectory, i.ToString()), issues, ct);
+                    : FromArchive(source, source, Path.Combine(workDirectory, i.ToString()), depth: 1, issues, ct);
 
                 progress?.Report(new ImportProgress(i, sources.Count, source, "Installing"));
                 foreach (var candidate in candidates)
@@ -77,7 +83,8 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
         return [new Candidate(pakPath, name, pakPath, sigPath)];
     }
 
-    private static List<Candidate> FromArchive(string archivePath, string extractDirectory, List<ImportIssue> issues, CancellationToken ct)
+    /// <param name="source">How the archive is named in messages: its path, or "outer.zip › inner.rar" when nested.</param>
+    private static List<Candidate> FromArchive(string archivePath, string source, string extractDirectory, int depth, List<ImportIssue> issues, CancellationToken ct)
     {
         IArchive archive;
         try
@@ -86,25 +93,40 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
         }
         catch (Exception ex)
         {
-            issues.Add(new ImportIssue(archivePath, null, ImportIssueKind.UnreadableArchive, $"Could not open {Path.GetFileName(archivePath)} as an archive: {ex.Message}"));
+            issues.Add(new ImportIssue(source, null, ImportIssueKind.UnreadableArchive, $"Could not open {Path.GetFileName(source)} as an archive: {ex.Message}"));
             return [];
         }
 
+        List<Candidate> candidates;
+        List<(string Path, string Source)> nested;
         using (archive)
         {
             try
             {
-                return ExtractPairs(archive, archivePath, extractDirectory, issues, ct);
+                (candidates, nested) = ExtractPairs(archive, source, extractDirectory, depth, issues, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                issues.Add(new ImportIssue(archivePath, null, ImportIssueKind.UnreadableArchive, $"Could not extract {Path.GetFileName(archivePath)}: {ex.Message}"));
+                issues.Add(new ImportIssue(source, null, ImportIssueKind.UnreadableArchive, $"Could not extract {Path.GetFileName(source)}: {ex.Message}"));
                 return [];
             }
         }
+
+        // Archives inside the archive, each with its own songs. Opened after closing the outer one.
+        for (var i = 0; i < nested.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            candidates.AddRange(FromArchive(nested[i].Path, nested[i].Source, Path.Combine(extractDirectory, "nested", i.ToString()), depth + 1, issues, ct));
+        }
+        return candidates;
     }
 
-    private static List<Candidate> ExtractPairs(IArchive archive, string archivePath, string extractDirectory, List<ImportIssue> issues, CancellationToken ct)
+    /// <summary>
+    /// Extracts the complete .pak + .sig pairs of an archive, and the archives it contains (returned to be
+    /// opened next, unless they are nested too deep).
+    /// </summary>
+    private static (List<Candidate> Songs, List<(string Path, string Source)> Nested) ExtractPairs(
+        IArchive archive, string archivePath, string extractDirectory, int depth, List<ImportIssue> issues, CancellationToken ct)
     {
         var files = archive.Entries.Where(e => !e.IsDirectory && e.Key is not null && !IsJunk(e.Key)).ToList();
         ILookup<string, IArchiveEntry> ByExtension(string extension) => files
@@ -112,15 +134,37 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
             .ToLookup(e => Path.GetFileNameWithoutExtension(e.Key!), StringComparer.OrdinalIgnoreCase);
         var paks = ByExtension(".pak");
         var sigs = ByExtension(".sig");
+        var archives = files.Where(e => IsArchive(e.Key!)).ToList();
 
-        if (paks.Count == 0)
+        if (paks.Count == 0 && archives.Count == 0)
         {
             issues.Add(new ImportIssue(archivePath, null, ImportIssueKind.NoSongsFound, $"{Path.GetFileName(archivePath)} does not contain any .pak file."));
-            return [];
+            return ([], []);
         }
 
         // Archive entry key → where to extract it. Pairs are matched by file name, wherever they are in the archive (as v1).
         var wanted = new Dictionary<string, string>(StringComparer.Ordinal);
+        var nested = new List<(string Path, string Source)>();
+        foreach (var entry in archives)
+        {
+            var name = Path.GetFileName(entry.Key!);
+            var label = $"{archivePath} › {name}";
+            if (depth >= MaxArchiveDepth)
+            {
+                issues.Add(new ImportIssue(label, null, ImportIssueKind.UnreadableArchive, $"{name} is inside too many archives; extract it by hand and import it."));
+                continue;
+            }
+            if (entry.IsEncrypted)
+            {
+                issues.Add(new ImportIssue(label, null, ImportIssueKind.UnreadableArchive, $"{name} is password-protected in the archive."));
+                continue;
+            }
+            // Named by position, never by the entry's path, so nothing can be written outside the temp folder.
+            var destination = Path.Combine(extractDirectory, "archives", nested.Count + Path.GetExtension(name).ToLowerInvariant());
+            wanted[entry.Key!] = destination;
+            nested.Add((destination, label));
+        }
+
         var candidates = new List<Candidate>();
         foreach (var group in paks)
         {
@@ -151,8 +195,8 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
             candidates.Add(candidate);
         }
 
-        if (candidates.Count == 0)
-            return [];
+        if (wanted.Count == 0)
+            return ([], []);
 
         if (archive.IsSolid || archive.Type == ArchiveType.SevenZip)
         {
@@ -182,8 +226,11 @@ public sealed class SharpCompressImporter(ILibraryScanner scanner, string? tempR
         var extracted = candidates.Where(c => File.Exists(c.PakPath) && File.Exists(c.SigPath)).ToList();
         foreach (var missing in candidates.Except(extracted))
             issues.Add(new ImportIssue(archivePath, missing.FileName, ImportIssueKind.Failed, $"{missing.FileName} could not be extracted from the archive."));
-        return extracted;
+        return (extracted, [.. nested.Where(n => File.Exists(n.Path))]);
     }
+
+    private static bool IsArchive(string key) =>
+        ArchiveExtensions.Contains(Path.GetExtension(key), StringComparer.OrdinalIgnoreCase);
 
     private static void Install(
         Candidate candidate,

@@ -17,7 +17,7 @@ public static class Converters
     public static readonly IValueConverter InstrumentGeometry = new FuncValueConverter<string?, Geometry?>(instrument =>
         IconGeometry.Convert(Display.InstrumentIconKey(instrument), typeof(Geometry), null, CultureInfo.InvariantCulture) as Geometry);
 
-    /// <summary>A part → its colour: beat purple, bass pink, loop yellow, lead green, like the game's discs.</summary>
+    /// <summary>A part → its colour: beat cyan, bass green, loop yellow, lead red, like the game's discs.</summary>
     public static readonly IValueConverter PartBrush = new FuncValueConverter<StemKind, IBrush?>(kind =>
         Application.Current?.TryGetResource($"Fsm.Part.{kind}", null, out var value) == true ? value as IBrush : Brushes.White);
 }

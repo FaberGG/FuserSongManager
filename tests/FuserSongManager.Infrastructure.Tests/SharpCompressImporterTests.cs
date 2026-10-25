@@ -62,6 +62,72 @@ public sealed class SharpCompressImporterTests : IDisposable
         Assert.False(File.Exists(Enabled("C_P.pak")));
     }
 
+    /// <summary>A zip whose entries are files read from disk (for archives inside archives).</summary>
+    private string ZipOfFiles(string name, params (string Entry, string File)[] entries)
+    {
+        var path = _temp.File(name);
+        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var (entry, file) in entries)
+            zip.CreateEntryFromFile(file, entry);
+        return path;
+    }
+
+    [Fact]
+    public async Task Archives_inside_an_archive_are_opened_as_download_sites_bundle_them()
+    {
+        // What a "download all" gives: one zip with each song's own zip or rar inside, maybe in a folder.
+        var first = Zip("first.zip", ("First_P.pak", "pak 1"), ("First_P.sig", "sig 1"));
+        var second = Zip("second.zip", ("Song/Second_P.pak", "pak 2"), ("Song/Second_P.sig", "sig 2"), ("Extra_P.pak", "no sig"));
+        var bundle = ZipOfFiles("bundle.zip",
+            ("first.zip", first),
+            ("Downloads/second.zip", second),
+            ("songs.rar", Path.Combine("TestData", "songs.rar")),
+            ("Loose_P.pak", first), ("Loose_P.sig", first));   // songs can also sit next to the archives
+
+        var result = await Import(null, bundle);
+
+        Assert.Equal(["First_P", "Loose_P", "RarSongA_P", "RarSongB_P", "Second_P"], result.Imported.Select(s => s.FileName).Order());
+        Assert.Equal("pak 2", File.ReadAllText(Enabled("Second_P.pak")));
+        Assert.Equal("PAK-RAR-B", File.ReadAllText(Enabled("RarSongB_P.pak")));
+        // Problems say which inner archive they come from.
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal((ImportIssueKind.MissingSignature, "Extra_P"), (issue.Kind, issue.FileName));
+        Assert.EndsWith("bundle.zip › second.zip", issue.Source);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_workRoot));   // the nested temp files are cleaned up too
+    }
+
+    [Fact]
+    public async Task The_same_song_in_two_inner_archives_is_installed_once()
+    {
+        var a = Zip("a.zip", ("Same_P.pak", "first copy"), ("Same_P.sig", "sig"));
+        var b = Zip("b.zip", ("Same_P.pak", "second copy"), ("Same_P.sig", "sig"));
+        var bundle = ZipOfFiles("bundle.zip", ("a.zip", a), ("b.zip", b));
+
+        var result = await Import(null, bundle);
+
+        Assert.Equal("Same_P", Assert.Single(result.Imported).FileName);
+        Assert.Equal(ImportIssueKind.DuplicateInImport, Assert.Single(result.Issues).Kind);
+    }
+
+    [Fact]
+    public async Task Archives_nested_too_deep_are_reported_instead_of_opened()
+    {
+        var song = Zip("song.zip", ("Deep_P.pak", "pak"), ("Deep_P.sig", "sig"));
+        var level2 = ZipOfFiles("level2.zip", ("song.zip", song));
+        var level1 = ZipOfFiles("level1.zip", ("level2.zip", level2));
+        var top = ZipOfFiles("top.zip", ("level1.zip", level1));
+
+        var result = await Import(null, top);
+
+        Assert.Empty(result.Imported);
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal(ImportIssueKind.UnreadableArchive, issue.Kind);
+        Assert.Contains("too many archives", issue.Message);
+
+        // One level less is fine.
+        Assert.Equal("Deep_P", Assert.Single((await Import(null, level1)).Imported).FileName);
+    }
+
     [Fact]
     public async Task New_songs_can_go_to_the_disabled_folder()
     {

@@ -374,6 +374,13 @@ Cada fase termina en algo que se puede ejecutar y probar. Las fases 1 y 2 no dep
 - **Iconos:**
   - Son los del juego que aportó el usuario (PNG de 96 px), vectorizados con Potrace a una ruta de 24×24 cada uno (`Themes/InstrumentIcons.axaml`).
   - El bajo usa la guitarra ("Bass guitar"). Synth usa el teclado de piano, Sampler el tocadiscos, Horns la trompeta y Strings el violín (asociación confirmada por el usuario).
+- **Colores de las partes:** los del modo de color normal del juego: Beat cian `#00BADD`, Bass verde `#54CC1F`, Loop amarillo `#EBDF35` y Lead rojo `#EE1E31`, medidos en `gameplay-color-normal.jpg`. Las primeras capturas estaban en modo daltónico (protanopia).
+
+**Importar archivos dentro de archivos:**
+- Las webs de custom songs ofrecen "descargar todo" como un solo .zip con el .zip o .rar de cada canción dentro.
+- El importador abre esos archivos internos de forma recursiva, hasta 3 niveles (el elegido y dos dentro); los más profundos se informan sin abrirse.
+- Los avisos dicen de qué archivo interno vienen ("pack.zip › cancion.rar"). Los archivos internos se extraen a la carpeta temporal con un nombre por posición, nunca con su ruta, y se borran al terminar.
+- Si dos archivos internos traen la misma canción, se instala una vez y la otra se informa como duplicada.
 
 **Reproducción en bucle:** el mezclador vuelve al inicio sin corte (`StemMixer.Loop`). Los compases salen de la duración y el BPM: 4 tiempos por compás y 8 compases por frase.
 
