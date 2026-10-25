@@ -422,10 +422,26 @@
         <Setter Property="FontSize" Value="14" />
         <Setter Property="MinHeight" Value="40" />
     </Style>
+    <!-- The library's search box: a filled violet well without an outline (one appears with focus), text centred. -->
     <Style Selector="TextBox.search">
         <Setter Property="FontSize" Value="15" />
+        <Setter Property="Height" Value="44" />
         <Setter Property="MinHeight" Value="44" />
-        <Setter Property="Padding" Value="8,11,12,11" />
+        <Setter Property="Padding" Value="4,0,14,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <!-- Fluent sets the well's colours per state, so each state is listed. -->
+    <Style Selector="TextBox.search /template/ Border#PART_BorderElement, TextBox.search:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#9E3A2268" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement, TextBox.search:focus:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#B83A2268" />
+        <Setter Property="BorderBrush" Value="#9D84F6" />
+        <Setter Property="BorderThickness" Value="2" />
     </Style>
 
     <!-- ===== Drop-down lists, like the crate's "Sorted by Title" ===== -->

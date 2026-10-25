@@ -203,6 +203,24 @@ public sealed class WindowTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Search_box_renders_with_text_and_focus()
+    {
+        var viewModel = _library.CreateMainViewModel();
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var search = window.FindControl<TextBox>("SearchBox")!;
+        Save(window, "search-empty");
+
+        search.Focus();
+        window.KeyTextInput("Killers");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Killers", search.Text);
+        Save(window, "search-typed");
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Empty_library_explains_what_to_do()
     {
         var viewModel = _library.CreateMainViewModel();

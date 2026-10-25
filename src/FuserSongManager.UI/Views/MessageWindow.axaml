@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:FuserSongManager.UI.Controls"
         x:Class="FuserSongManager.UI.Views.MessageWindow"
+        Icon="/Assets/app.ico"
         Width="600" SizeToContent="Height" MaxHeight="680"
         CanResize="False" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">

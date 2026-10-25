@@ -44,6 +44,7 @@ New-Item -ItemType Directory $staging | Out-Null
 Copy-Item (Join-Path $publish 'FuserSongManager.exe') $staging
 Copy-Item (Join-Path $PSScriptRoot 'README-portable.txt') (Join-Path $staging 'README.txt')
 Copy-Item (Join-Path $PSScriptRoot 'THIRD-PARTY-NOTICES.txt') $staging
+Copy-Item (Join-Path $root 'LICENSE') (Join-Path $staging 'LICENSE.txt')
 # The font's license has to travel with it.
 Copy-Item (Join-Path $PSScriptRoot '..\src\FuserSongManager.UI\Assets\Fonts\OFL-KumbhSans.txt') $staging
 

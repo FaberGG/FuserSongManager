@@ -53,3 +53,9 @@ Good to know
   written to files.
 - The first start after updating reads every song once more, to learn the instrument of each part.
 - If something goes wrong, the log file says what happened and which file was involved.
+
+License
+-------
+Fuser Song Manager is free software under the MIT License (LICENSE.txt). The instrument icons come from
+the game FUSER and belong to their owners; third-party components are listed in THIRD-PARTY-NOTICES.txt.
+Not affiliated with Harmonix, NCSoft or Epic Games.

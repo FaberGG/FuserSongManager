@@ -4,6 +4,7 @@
         xmlns:views="using:FuserSongManager.UI.Views"
         xmlns:c="using:FuserSongManager.UI.Controls"
         x:Class="FuserSongManager.UI.Views.SettingsWindow"
+        Icon="/Assets/app.ico"
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
         Width="640" SizeToContent="Height"

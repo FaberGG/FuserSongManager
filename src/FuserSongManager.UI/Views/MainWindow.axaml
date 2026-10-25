@@ -8,7 +8,7 @@
         mc:Ignorable="d" d:DesignWidth="1440" d:DesignHeight="900"
         x:Class="FuserSongManager.UI.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/app.ico"
         Title="Fuser Song Manager"
         Width="1440" Height="900" MinWidth="980" MinHeight="620"
         WindowStartupLocation="CenterScreen">
@@ -21,7 +21,7 @@
             <!-- ===== Header: title, search, help, settings, more, Play Fuser ===== -->
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="20">
                 <TextBlock Classes="h1" Text="Custom Songs" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" x:Name="SearchBox" Classes="search" MaxWidth="420" HorizontalAlignment="Left" MinWidth="240"
+                <TextBox Grid.Column="1" x:Name="SearchBox" Classes="search" Width="400" HorizontalAlignment="Left"
                          Text="{Binding SearchText}" PlaceholderText="Search title, artist, author or notes  (Ctrl+F)">
                     <TextBox.InnerLeftContent>
                         <PathIcon Data="{StaticResource Ui.Search}" Width="18" Height="18" Margin="14,0,4,0" Foreground="{StaticResource Fsm.Ink3}" />
