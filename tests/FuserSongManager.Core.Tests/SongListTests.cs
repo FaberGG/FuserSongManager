@@ -88,6 +88,42 @@ public class SongFilterTests
             [false, false, true, true],
             new[] { enabled, disabled, failed, noSig }.Select(new SongFilter { Status = StatusFilter.WithProblems }.ToPredicate()));
     }
+
+    private static Song Tuned(int? bpm, MusicalKey? key = MusicalKey.A, SongMode? mode = SongMode.Minor) =>
+        Song() with { Metadata = SongMetadata.Empty with { Title = "Title", Bpm = bpm, Key = key, Mode = mode } };
+
+    [Theory]
+    [InlineData(99, false)]
+    [InlineData(100, true)]   // both ends included
+    [InlineData(124, true)]
+    [InlineData(140, true)]
+    [InlineData(141, false)]
+    [InlineData(null, false)] // no BPM: hidden while the range is set
+    public void Bpm_range_includes_its_ends_and_hides_songs_without_bpm(int? bpm, bool expected) =>
+        Assert.Equal(expected, Matches(new SongFilter { MinBpm = 100, MaxBpm = 140 }, Tuned(bpm)));
+
+    [Fact]
+    public void Bpm_range_can_be_open_on_one_side()
+    {
+        Assert.True(Matches(new SongFilter { MinBpm = 120 }, Tuned(200)));
+        Assert.False(Matches(new SongFilter { MinBpm = 120 }, Tuned(119)));
+        Assert.True(Matches(new SongFilter { MaxBpm = 90 }, Tuned(60)));
+        Assert.False(Matches(new SongFilter { MaxBpm = 90 }, Tuned(null)));
+    }
+
+    [Fact]
+    public void Key_and_mode_filters_combine_and_hide_unknown_values()
+    {
+        var filter = new SongFilter { Key = MusicalKey.Gb, Mode = SongMode.Major };
+
+        Assert.False(filter.IsEmpty);
+        Assert.True(Matches(filter, Tuned(124, MusicalKey.Gb, SongMode.Major)));
+        Assert.False(Matches(filter, Tuned(124, MusicalKey.Gb, SongMode.Minor)));
+        Assert.False(Matches(filter, Tuned(124, MusicalKey.B, SongMode.Major)));
+        Assert.False(Matches(filter, Tuned(124, null, SongMode.Major)));
+        Assert.False(Matches(filter, Tuned(124, MusicalKey.Gb, null)));
+        Assert.True(Matches(new SongFilter { Mode = SongMode.Minor }, Tuned(null, null, SongMode.Minor)));
+    }
 }
 
 public sealed class FuserInstallTests : IDisposable

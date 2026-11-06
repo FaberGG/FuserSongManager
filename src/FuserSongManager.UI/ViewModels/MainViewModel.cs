@@ -44,6 +44,19 @@ public sealed partial class StatusTabViewModel(string label, StatusFilter value,
     private void Select() => select(Value);
 }
 
+/// <summary>One of the mode choices of the advanced filters (Any, Major, Minor).</summary>
+public sealed partial class ModeChoiceViewModel(string label, SongMode? value, Action<SongMode?> select) : ViewModelBase
+{
+    public string Label { get; } = label;
+    public SongMode? Value { get; } = value;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
+
+    [RelayCommand]
+    private void Select() => select(Value);
+}
+
 /// <summary>One row of tiles. The grid is a list of rows so only the rows on screen are created.</summary>
 public sealed record TileRow(IReadOnlyList<SongRowViewModel> Songs, int Columns);
 
@@ -55,6 +68,9 @@ public sealed record TileRow(IReadOnlyList<SongRowViewModel> Songs, int Columns)
 public sealed partial class MainViewModel : ViewModelBase, IDisposable
 {
     public static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(150);
+    // Ends of the tempo slider while no song has a BPM.
+    private const int DefaultMinBpm = 60;
+    private const int DefaultMaxBpm = 200;
     private static readonly TimeSpan GamePollInterval = TimeSpan.FromSeconds(2);
 
     private readonly AppServices _services;
@@ -99,6 +115,14 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         SelectedStatus = StatusOptions[0];
         SelectedRating = RatingOptions[0];
         SelectedSort = SortOptions[0];
+        KeyLabels = ["Any key", .. Enum.GetValues<MusicalKey>().Select(k => Display.Key(k))];
+        ModeChoices =
+        [
+            new("Any", null, SelectMode),
+            new("Major", SongMode.Major, SelectMode),
+            new("Minor", SongMode.Minor, SelectMode),
+        ];
+        SelectMode(null);
         SearchText = "";
         IsAutoplayOn = services.Settings.AutoplayPreview;
     }
@@ -151,9 +175,165 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         Genre = SelectedGenre?.Value,
         Status = SelectedStatus?.Value ?? StatusFilter.All,
         MinRating = SelectedRating?.Value ?? 0,
+        // A thumb at the end of the slider means no limit on that side, so songs without a BPM still show.
+        MinBpm = BpmLow > BpmMinimum ? (int)BpmLow : null,
+        MaxBpm = BpmHigh < BpmMaximum ? (int)BpmHigh : null,
+        Key = SelectedKey,
+        Mode = SelectedMode,
     };
 
     public bool HasFilter => !CurrentFilter.IsEmpty;
+
+    // ---- Advanced filters: tempo, key and mode, in a panel like the game's tempo and key settings ----
+
+    /// <summary>Slowest and fastest BPM in the library: the ends of the tempo slider.</summary>
+    [ObservableProperty]
+    public partial int BpmMinimum { get; private set; } = DefaultMinBpm;
+
+    [ObservableProperty]
+    public partial int BpmMaximum { get; private set; } = DefaultMaxBpm;
+
+    [ObservableProperty]
+    public partial double BpmLow { get; set; } = DefaultMinBpm;
+
+    [ObservableProperty]
+    public partial double BpmHigh { get; set; } = DefaultMaxBpm;
+
+    /// <summary>Position of the key slider: 0 is any key, then C to B (see <see cref="KeyLabels"/>).</summary>
+    [ObservableProperty]
+    public partial double KeyIndex { get; set; }
+
+    public IReadOnlyList<string> KeyLabels { get; }
+
+    public IReadOnlyList<ModeChoiceViewModel> ModeChoices { get; }
+
+    [ObservableProperty]
+    public partial SongMode? SelectedMode { get; private set; }
+
+    public MusicalKey? SelectedKey => KeyIndex >= 1 ? (MusicalKey)((int)Math.Round(KeyIndex) - 1) : null;
+
+    public string BpmText =>
+        CurrentFilter is { MinBpm: null, MaxBpm: null } ? "Any tempo"
+        : (int)BpmLow == (int)BpmHigh ? $"{BpmLow:0} BPM"
+        : $"{BpmLow:0}–{BpmHigh:0} BPM";
+
+    public string KeyText => KeyLabels[Math.Clamp((int)Math.Round(KeyIndex), 0, KeyLabels.Count - 1)];
+
+    public string ModeText => SelectedMode?.ToString() ?? "Any mode";
+
+    /// <summary>Key and mode in one line, as the game's summary shows them: "G♭ Major", "Any key · Minor".</summary>
+    public string KeyAndModeText => (SelectedKey, SelectedMode) switch
+    {
+        (null, null) => "Any key",
+        (null, { } mode) => $"Any key · {mode}",
+        (_, null) => KeyText,
+        (_, { } mode) => $"{KeyText} {mode}",
+    };
+
+    public bool HasAdvancedFilter => CurrentFilter is not { MinBpm: null, MaxBpm: null, Key: null, Mode: null };
+
+    /// <summary>Tooltip of the filter button: what it filters by now.</summary>
+    public string AdvancedFilterSummary
+    {
+        get
+        {
+            var filter = CurrentFilter;
+            var parts = new List<string>(3);
+            if (filter is not { MinBpm: null, MaxBpm: null })
+                parts.Add(BpmText);
+            if (filter.Key is not null)
+                parts.Add(KeyText);
+            if (filter.Mode is not null)
+                parts.Add(ModeText);
+            return parts.Count == 0 ? "Filter by tempo, key and mode" : "Filtered by " + string.Join(" · ", parts);
+        }
+    }
+
+    partial void OnBpmLowChanged(double value) => OnAdvancedFilterChanged(delay: true);
+    partial void OnBpmHighChanged(double value) => OnAdvancedFilterChanged(delay: true);
+    partial void OnKeyIndexChanged(double value) => OnAdvancedFilterChanged(delay: false);
+    partial void OnSelectedModeChanged(SongMode? value) => OnAdvancedFilterChanged(delay: false);
+
+    private void SelectMode(SongMode? mode)
+    {
+        SelectedMode = mode;
+        foreach (var choice in ModeChoices)
+            choice.IsSelected = choice.Value == mode;
+    }
+
+    private void OnAdvancedFilterChanged(bool delay)
+    {
+        NotifyAdvancedFilterChanged();
+        if (_resettingFilters)
+            return;
+        // Dragging the tempo slider changes it many times a second: filter once it rests, as with typing.
+        if (delay)
+            _ = ApplyFilterAfterDelayAsync();
+        else
+            ApplyFilter();
+    }
+
+    private void NotifyAdvancedFilterChanged()
+    {
+        OnPropertyChanged(nameof(BpmText));
+        OnPropertyChanged(nameof(KeyText));
+        OnPropertyChanged(nameof(ModeText));
+        OnPropertyChanged(nameof(KeyAndModeText));
+        OnPropertyChanged(nameof(HasAdvancedFilter));
+        OnPropertyChanged(nameof(AdvancedFilterSummary));
+        ResetAdvancedFiltersCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasAdvancedFilter))]
+    private void ResetAdvancedFilters()
+    {
+        _resettingFilters = true;
+        try
+        {
+            ResetAdvancedFilterValues();
+        }
+        finally
+        {
+            _resettingFilters = false;
+        }
+        _searchDelay?.Cancel();
+        ApplyFilter();
+    }
+
+    private void ResetAdvancedFilterValues()
+    {
+        BpmLow = BpmMinimum;
+        BpmHigh = BpmMaximum;
+        KeyIndex = 0;
+        SelectMode(null);
+    }
+
+    /// <summary>
+    /// Fits the tempo slider to the library's BPMs. A thumb left at an end moves to the new end; a range the user
+    /// chose is kept, cut to the new ends.
+    /// </summary>
+    private void UpdateBpmBounds()
+    {
+        var bpms = _rows.Select(r => r.Bpm).OfType<int>().ToList();
+        int minimum = bpms.Count > 0 ? bpms.Min() : DefaultMinBpm, maximum = bpms.Count > 0 ? bpms.Max() : DefaultMaxBpm;
+        if (minimum == BpmMinimum && maximum == BpmMaximum)
+            return;
+
+        var lowAtEnd = BpmLow <= BpmMinimum;
+        var highAtEnd = BpmHigh >= BpmMaximum;
+        _resettingFilters = true;
+        try
+        {
+            BpmMinimum = minimum;
+            BpmMaximum = maximum;
+            BpmLow = lowAtEnd ? minimum : Math.Clamp(BpmLow, minimum, maximum);
+            BpmHigh = highAtEnd ? maximum : Math.Clamp(BpmHigh, BpmLow, maximum);
+        }
+        finally
+        {
+            _resettingFilters = false;
+        }
+    }
 
     partial void OnSearchTextChanged(string value) => _ = ApplyFilterAfterDelayAsync();
     partial void OnSelectedGenreChanged(Option<Genre?> value) => ApplyFilterUnlessResetting();
@@ -195,6 +375,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         VisibleSongs = [.. Sort(_rows.Where(r => matches(r.Song)), SelectedSort?.Value ?? SongSort.Title)];
         BuildTileRows();
         OnPropertyChanged(nameof(HasFilter));
+        NotifyAdvancedFilterChanged();
         ClearFiltersCommand.NotifyCanExecuteChanged();
         UpdateCounts();
     }
@@ -256,6 +437,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
             SelectedGenre = GenreOptions[0];
             SelectedStatus = StatusOptions[0];
             SelectedRating = RatingOptions[0];
+            ResetAdvancedFilterValues();
         }
         finally
         {
@@ -549,6 +731,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         if (removed.Count > 0 && _selection.Intersect(removed).Any())
             SetSelection(_selection.Except(removed));
         OnPropertyChanged(nameof(Rows));
+        UpdateBpmBounds();
         // Rows updated in place may now match the filter differently (e.g. after enabling).
         ApplyFilter();
     }

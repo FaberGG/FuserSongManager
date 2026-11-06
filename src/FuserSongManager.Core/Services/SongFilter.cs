@@ -29,7 +29,20 @@ public sealed record SongFilter
     /// <summary>0 shows every song, including unrated ones.</summary>
     public int MinRating { get; init; }
 
-    public bool IsEmpty => string.IsNullOrWhiteSpace(Text) && Genre is null && Status == StatusFilter.All && MinRating <= 0;
+    /// <summary>Lowest BPM shown, inclusive. Songs without a BPM are hidden while either bound is set.</summary>
+    public int? MinBpm { get; init; }
+
+    /// <summary>Highest BPM shown, inclusive.</summary>
+    public int? MaxBpm { get; init; }
+
+    /// <summary>Only songs in this key; songs whose key could not be read are hidden.</summary>
+    public MusicalKey? Key { get; init; }
+
+    /// <summary>Only major or only minor songs; songs whose mode could not be read are hidden.</summary>
+    public SongMode? Mode { get; init; }
+
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Text) && Genre is null && Status == StatusFilter.All && MinRating <= 0
+        && MinBpm is null && MaxBpm is null && Key is null && Mode is null;
 
     public Func<Song, bool> ToPredicate()
     {
@@ -37,12 +50,24 @@ public sealed record SongFilter
         var genre = Genre;
         var status = Status;
         var minRating = MinRating;
+        var minBpm = MinBpm;
+        var maxBpm = MaxBpm;
+        var key = Key;
+        var mode = Mode;
 
         return song =>
         {
-            if (genre is not null && song.Metadata.Genre != genre)
+            var metadata = song.Metadata;
+            if (genre is not null && metadata.Genre != genre)
                 return false;
             if (minRating > 0 && song.Rating < minRating)
+                return false;
+            if ((minBpm is not null || maxBpm is not null)
+                && (metadata.Bpm is not { } bpm || bpm < minBpm || bpm > maxBpm))
+                return false;
+            if (key is not null && metadata.Key != key)
+                return false;
+            if (mode is not null && metadata.Mode != mode)
                 return false;
             if (!MatchesStatus(song, status))
                 return false;
