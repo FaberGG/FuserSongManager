@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using FuserSongManager.UI.ViewModels;
 
 namespace FuserSongManager.UI.Views;
@@ -36,6 +38,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Dialogs.CloseAll();   // nobody is left waiting for a dialog of a closed window
         ViewModel?.Dispose();
         base.OnClosed(e);
     }
@@ -69,10 +72,31 @@ public partial class MainWindow : Window
 
     private bool IsTyping => FocusManager?.GetFocusedElement() is TextBox;
 
+    /// <summary>
+    /// Keys pressed in a drop-down, a menu or the filter panel route through the window too; they belong to that
+    /// popup (the arrows move its sliders and items, Space and Enter press its buttons, Esc closes it).
+    /// </summary>
+    private static bool IsInPopup(KeyEventArgs e) =>
+        e.Source is Visual visual && visual.GetSelfAndVisualAncestors().Any(v => v is PopupRoot or OverlayPopupHost);
+
+    private void OnCloseFilters(object? sender, RoutedEventArgs e) => FilterButton.Flyout?.Hide();
+
     private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
         if (ViewModel is not { } viewModel)
             return;
+
+        // While a dialog is open the window's shortcuts must not act on the library under it. Keys meant for the
+        // dialog (arrows, Space, Enter, Tab) go on to it; Esc closes it even if focus is not inside it.
+        if (Dialogs.IsOpen)
+        {
+            if (e.Key == Key.Escape && !IsInPopup(e) && !(e.Source is Visual source && source.GetSelfAndVisualAncestors().Contains(Dialogs)))
+            {
+                Dialogs.Close(false);
+                e.Handled = true;
+            }
+            return;
+        }
         var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
 
         // These work everywhere, even while typing.
@@ -97,7 +121,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 return;
         }
-        if (IsTyping || e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        if (IsTyping || IsInPopup(e) || e.KeyModifiers.HasFlag(KeyModifiers.Alt))
             return;
 
         switch (e.Key)
@@ -138,7 +162,7 @@ public partial class MainWindow : Window
     // Buttons click on Space when the key goes up: keep the shortcut from also pressing the focused button.
     private void OnShortcutKeyUp(object? sender, KeyEventArgs e)
     {
-        if (e.Key is Key.Space or Key.Enter && !IsTyping)
+        if (e.Key is Key.Space or Key.Enter && !IsTyping && !IsInPopup(e) && !Dialogs.IsOpen)
             e.Handled = true;
     }
 

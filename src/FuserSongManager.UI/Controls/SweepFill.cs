@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -8,6 +9,9 @@ namespace FuserSongManager.UI.Controls;
 /// The hover colour of Fuser's buttons. It appears at once when <see cref="IsActive"/> turns on and, when it
 /// turns off, sweeps away to the right with a rippling wave on its trailing edge. Placed behind a button's
 /// content, inside a border that clips to the button's rounded corners.
+/// With <see cref="ShiftsColour"/> the colour drifts slowly through the game's hover colours (violet, magenta,
+/// coral, orange and back) in place of <see cref="Fill"/>, which must still be set (null turns the sweep off). Every sweep reads the same clock, so two buttons
+/// show the same colour at the same moment.
 /// </summary>
 public sealed class SweepFill : Control
 {
@@ -28,8 +32,25 @@ public sealed class SweepFill : Control
     public static readonly StyledProperty<double> WaveLengthProperty =
         AvaloniaProperty.Register<SweepFill, double>(nameof(WaveLength), 18);
 
+    public static readonly StyledProperty<bool> ShiftsColourProperty =
+        AvaloniaProperty.Register<SweepFill, bool>(nameof(ShiftsColour));
+
     // Time for the wave to travel one wave length along the edge.
     private const double RipplePeriodSeconds = 0.55;
+
+    // Seconds to drift from one hover colour to the next.
+    private const double ColourStepSeconds = 2.5;
+
+    // The hover gradients seen in the game, left and right colour; the drift goes along the list and back.
+    private static readonly (Color Left, Color Right)[] HoverColours =
+    [
+        (Color.Parse("#6C55EE"), Color.Parse("#9D84F6")),   // violet: the crate's buttons
+        (Color.Parse("#C63CC8"), Color.Parse("#7A45DA")),   // magenta: the key setting
+        (Color.Parse("#FF5A55"), Color.Parse("#D63FB4")),   // coral: the tempo setting
+        (Color.Parse("#FF7A52"), Color.Parse("#F45F9E")),   // orange: the mode setting
+    ];
+
+    private static readonly Stopwatch Clock = Stopwatch.StartNew();
 
     static SweepFill()
     {
@@ -67,6 +88,42 @@ public sealed class SweepFill : Control
         set => SetValue(WaveLengthProperty, value);
     }
 
+    public bool ShiftsColour
+    {
+        get => GetValue(ShiftsColourProperty);
+        set => SetValue(ShiftsColourProperty, value);
+    }
+
+    /// <summary>The drifting hover colour at <paramref name="seconds"/> on the shared clock.</summary>
+    public static LinearGradientBrush HoverBrushAt(double seconds)
+    {
+        var last = HoverColours.Length - 1;
+        // Along the list and back: 0 → last → 0.
+        var position = seconds / ColourStepSeconds % (2 * last);
+        if (position > last)
+            position = 2 * last - position;
+        var index = Math.Min((int)position, last - 1);
+        var t = Smooth(position - index);
+        var (from, to) = (HoverColours[index], HoverColours[index + 1]);
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Mix(from.Left, to.Left, t), 0),
+                new GradientStop(Mix(from.Right, to.Right, t), 1),
+            },
+        };
+    }
+
+    private static double Smooth(double t) => t * t * (3 - 2 * t);
+
+    private static Color Mix(Color a, Color b, double t) => Color.FromRgb(
+        (byte)Math.Round(a.R + (b.R - a.R) * t),
+        (byte)Math.Round(a.G + (b.G - a.G) * t),
+        (byte)Math.Round(a.B + (b.B - a.B) * t));
+
     // 0 = covering the whole control, 1 = gone off the right edge.
     private double _progress = 1;
     private TimeSpan? _leaveStarted;
@@ -86,6 +143,8 @@ public sealed class SweepFill : Control
             _progress = 0;
             _leaveStarted = null;
             InvalidateVisual();
+            if (ShiftsColour)
+                RequestFrame();   // keeps the colour drifting while it shows
         }
         else if (_progress < 1)
         {
@@ -112,7 +171,14 @@ public sealed class SweepFill : Control
     {
         _frameRequested = false;
         if (IsActive)
+        {
+            if (ShiftsColour)
+            {
+                InvalidateVisual();
+                RequestFrame();
+            }
             return;
+        }
 
         _leaveStarted ??= now;
         var duration = Math.Max(1, Duration.TotalMilliseconds);
@@ -138,7 +204,8 @@ public sealed class SweepFill : Control
 
     public override void Render(DrawingContext context)
     {
-        var fill = Fill;
+        // A null Fill turns the sweep off, drifting or not.
+        var fill = Fill is null ? null : ShiftsColour ? HoverBrushAt(Clock.Elapsed.TotalSeconds) : Fill;
         var bounds = new Rect(Bounds.Size);
         if (fill is null || _progress >= 1 || bounds.Width <= 0 || bounds.Height <= 0)
             return;

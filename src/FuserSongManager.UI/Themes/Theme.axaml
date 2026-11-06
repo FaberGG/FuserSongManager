@@ -34,7 +34,8 @@
             <SolidColorBrush x:Key="Fsm.Part.Loop" Color="#EBDF35" />
             <SolidColorBrush x:Key="Fsm.Part.Lead" Color="#EE1E31" />
 
-            <!-- Hover sweeps: violet in the library (crate), coral in dialogs, blue for list options. -->
+            <!-- Hover sweeps: violet in the library (crate), coral in dialogs, blue for list options. The violet one
+                 drifts through the game's hover colours (see SweepFill.ShiftsColour); this brush is its first colour. -->
             <LinearGradientBrush x:Key="Fsm.Sweep.Violet" StartPoint="0%,0%" EndPoint="100%,0%">
                 <GradientStop Color="#6C55EE" Offset="0" />
                 <GradientStop Color="#9D84F6" Offset="1" />
@@ -145,7 +146,7 @@
                         BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                         ClipToBounds="True">
                     <Panel>
-                        <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Violet}" />
+                        <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Violet}" ShiftsColour="True" />
                         <ContentPresenter Name="PART_ContentPresenter"
                                           Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                           Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
@@ -182,6 +183,10 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                     Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
     <Style Selector="Button:pointerover /template/ c|SweepFill#Sweep, Button:focus-visible /template/ c|SweepFill#Sweep">
         <Setter Property="IsActive" Value="True" />
     </Style>
@@ -198,6 +203,7 @@
     </Style>
     <Style Selector="Button.coral /template/ c|SweepFill#Sweep">
         <Setter Property="Fill" Value="{StaticResource Fsm.Sweep.Coral}" />
+        <Setter Property="ShiftsColour" Value="False" />
     </Style>
     <Style Selector="Button.quiet, Button.coral.quiet">
         <Setter Property="Background" Value="#14FFFFFF" />
@@ -223,6 +229,11 @@
     <Style Selector="Button.icon PathIcon">
         <Setter Property="Width" Value="22" />
         <Setter Property="Height" Value="22" />
+    </Style>
+
+    <!-- An icon button whose filter is in use. -->
+    <Style Selector="Button.icon.on">
+        <Setter Property="Background" Value="#9D84F6" />
     </Style>
 
     <!-- Text-only button. -->
@@ -414,6 +425,154 @@
         <Setter Property="IsVisible" Value="True" />
     </Style>
 
+    <!-- ===== In-window panels: the card (ModalPanel) and the layer that shows dialogs over the window (DialogHost) ===== -->
+
+    <!-- Like the game's dialogs: a dark box, the title on top, the buttons under the content, and a round close
+         button on the top-right corner. The card leaves room for that button only when it has one. -->
+    <Style Selector="c|ModalPanel">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Classes="modal" Background="#140C26" CornerRadius="6" Padding="30,26,30,22"
+                            BoxShadow="0 10 30 0 #80000000">
+                        <DockPanel>
+                            <ContentPresenter DockPanel.Dock="Bottom" Content="{TemplateBinding Footer}" Margin="0,20,0,0"
+                                              IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock DockPanel.Dock="Top" Classes="title" Text="{TemplateBinding Title}"
+                                       TextAlignment="{TemplateBinding TitleAlignment}"
+                                       IsVisible="{TemplateBinding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </DockPanel>
+                    </Border>
+                    <Button Name="PART_Close" Classes="close" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            IsVisible="{TemplateBinding ShowClose}" ToolTip.Tip="Close" AutomationProperties.Name="Close">
+                        <PathIcon Data="{StaticResource Ui.Close}" Width="24" Height="24" />
+                    </Button>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="c|ModalPanel:closable /template/ Border.modal">
+        <Setter Property="Margin" Value="0,24,24,0" />
+    </Style>
+    <Style Selector="c|ModalPanel TextBlock.title">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+
+    <Style Selector="c|DialogHost">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The veil takes every click, so nothing under the dialog can be pressed; Tab stays inside the dialog. -->
+                <Border Background="#B3060312" KeyboardNavigation.TabNavigation="Cycle">
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="32"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- ===== Tempo, key and mode filters: the game's tempo and key settings ===== -->
+
+    <Style Selector="FlyoutPresenter.filters">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="MaxWidth" Value="900" />
+        <Setter Property="MaxHeight" Value="900" />
+    </Style>
+    <Style Selector="c|ModalPanel TextBlock.heading">
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="2,0,0,8" />
+    </Style>
+    <!-- The summary shown next to the filter button on hover. -->
+    <Style Selector="ToolTip.summary">
+        <Setter Property="Background" Value="#140C26" />
+        <Setter Property="Foreground" Value="{StaticResource Fsm.Ink}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="MaxWidth" Value="400" />
+    </Style>
+    <Style Selector="ToolTip.summary TextBlock.big">
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- One setting: a rounded well that fills with colour under the pointer. The colour layer clips to the corners;
+         the content does not, so the slider's value label can hang below the row. -->
+    <Style Selector="Panel.filterRow">
+        <Setter Property="Height" Value="62" />
+    </Style>
+    <Style Selector="Panel.filterRow:pointerover">
+        <Setter Property="ZIndex" Value="1" />
+    </Style>
+    <Style Selector="Panel.filterRow > Border">
+        <Setter Property="Background" Value="#2E8C6CD8" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <!-- The same hover as the buttons. -->
+    <Style Selector="Panel.filterRow c|SweepFill">
+        <Setter Property="Fill" Value="{StaticResource Fsm.Sweep.Violet}" />
+        <Setter Property="ShiftsColour" Value="True" />
+    </Style>
+    <Style Selector="Panel.filterRow:pointerover c|SweepFill">
+        <Setter Property="IsActive" Value="True" />
+    </Style>
+    <Style Selector="Panel.filterRow TextBlock.value">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- Any / Major / Minor: the selected one is white, like the game's switch. -->
+    <Style Selector="Button.pill">
+        <Setter Property="Background" Value="#26FFFFFF" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="MinWidth" Value="74" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="CornerRadius" Value="17" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.pill /template/ c|SweepFill#Sweep">
+        <Setter Property="Fill" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.pill:pointerover">
+        <Setter Property="Background" Value="#47FFFFFF" />
+    </Style>
+    <Style Selector="Button.pill.selected">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Foreground" Value="#2A1A55" />
+    </Style>
+    <!-- The round white close button on the panel's corner. -->
+    <Style Selector="Button.close">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="Background" Value="#F2ECE6F7" />
+        <Setter Property="Foreground" Value="#1A1238" />
+        <Setter Property="BorderBrush" Value="#3A2268" />
+        <Setter Property="BorderThickness" Value="3" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.close /template/ c|SweepFill#Sweep">
+        <Setter Property="Fill" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.close:pointerover">
+        <Setter Property="Background" Value="White" />
+    </Style>
+
     <!-- ===== Text boxes ===== -->
 
     <Style Selector="TextBox">
@@ -461,7 +620,7 @@
                 <Panel>
                     <Border Name="Background" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" ClipToBounds="True">
                         <Panel>
-                            <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Violet}" />
+                            <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Violet}" ShiftsColour="True" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="{TemplateBinding Padding}">
                                 <ContentControl Content="{TemplateBinding SelectionBoxItem}" VerticalAlignment="Center"
                                                 Foreground="{TemplateBinding Foreground}" />
@@ -504,7 +663,7 @@
             <ControlTemplate>
                 <Border Name="Root" Background="{TemplateBinding Background}" ClipToBounds="True" MinHeight="{TemplateBinding MinHeight}">
                     <Panel>
-                        <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Blue}" />
+                        <c:SweepFill Name="Sweep" Fill="{StaticResource Fsm.Sweep.Blue}" ShiftsColour="True" />
                         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}"
                                           Foreground="{TemplateBinding Foreground}" VerticalContentAlignment="Center" />
