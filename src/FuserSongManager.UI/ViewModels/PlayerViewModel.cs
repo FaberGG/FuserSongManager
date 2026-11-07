@@ -266,11 +266,28 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
                     continue;
                 }
                 if (State == PlayerState.Playing)
+                {
                     SetPosition(_player.Position.TotalSeconds);
+                    SyncStemsWithPlayer();
+                }
             }
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    /// <summary>
+    /// The player can turn parts back on by itself (the song starts again after the riser with every part on): the
+    /// discs show what it plays. A disc the user just switched is already switched in the player, so nothing clashes.
+    /// </summary>
+    private void SyncStemsWithPlayer()
+    {
+        foreach (var stem in Stems)
+        {
+            var on = !_player!.IsMuted(stem.Kind);
+            if (stem.IsOn != on)
+                stem.IsOn = on;
         }
     }
 

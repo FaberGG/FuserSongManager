@@ -245,9 +245,14 @@ public sealed class FakeStemPlayer : IStemPlayer
 
     public void StopRiser() { IsRiserActive = false; RiserStops++; }
 
-    /// <summary>The riser ended and the song took over.</summary>
-    public void FinishRiser() => IsRiserActive = false;
+    /// <summary>The riser ended and the song took over: it starts again with every part on, as the real player does.</summary>
+    public void FinishRiser()
+    {
+        IsRiserActive = false;
+        Muted.Clear();
+    }
     public void SetMuted(StemKind stem, bool muted) { if (muted) Muted.Add(stem); else Muted.Remove(stem); }
+    public bool IsMuted(StemKind stem) => Muted.Contains(stem);
     public void Dispose() { Disposed = true; IsPlaying = false; }
 
     public void End(Exception? error = null) { IsPlaying = false; PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error)); }

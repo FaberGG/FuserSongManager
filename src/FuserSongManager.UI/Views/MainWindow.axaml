@@ -270,9 +270,8 @@
                                                                 <Button Grid.Column="2" Classes="riser" Classes.playing="{Binding Riser.IsPlaying}"
                                                                         Command="{Binding Riser.PlayCommand}" ToolTip.Tip="{Binding Riser.ToolTip}"
                                                                         IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                                        AutomationProperties.Name="Listen to the riser">
-                                                                    <Path Data="{StaticResource Ui.Riser}" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="2"
-                                                                          StrokeLineCap="Round" StrokeJoin="Round" Width="26" Height="26" Stretch="Uniform" />
+                                                                        AutomationProperties.Name="{Binding Riser.ToolTip}">
+                                                                    <Path Data="{StaticResource Ui.Riser}" Fill="{Binding $parent[Button].Foreground}" Width="28" Height="28" Stretch="Uniform" />
                                                                 </Button>
                                                             </Grid>
                                                             <c:LoopTimeline Height="30" Position="{Binding PositionSeconds}" Duration="{Binding DurationSeconds}"

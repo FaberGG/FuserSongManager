@@ -56,6 +56,8 @@ public sealed class StemMixer : IDisposable
 
     public bool IsMuted(StemKind kind) => _muted.Contains(kind);
 
+    public void ClearMuted() => _muted.Clear();
+
     /// <summary>
     /// Starts again from the beginning instead of ending, as the game does: a Fuser song is four phrases of
     /// eight bars that are made to repeat seamlessly.

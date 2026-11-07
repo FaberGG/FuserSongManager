@@ -97,6 +97,12 @@ public interface IStemPlayer : IDisposable
 
     void SetMuted(StemKind stem, bool muted);
 
+    /// <summary>
+    /// Whether the part is muted now. It changes by itself when the riser hands over to the song, which starts again
+    /// with every part on.
+    /// </summary>
+    bool IsMuted(StemKind stem);
+
     /// <summary>Starts again from the beginning at the end of the song instead of stopping.</summary>
     bool Loop { get; set; }
 
@@ -104,7 +110,8 @@ public interface IStemPlayer : IDisposable
     /// The riser transition, played by this same player so the hand-over is exact. While the song plays it waits for
     /// the end of the current bar (<paramref name="bar"/>, or starts at once when unknown), then the riser sounds,
     /// the song fades out over two bars (half the riser when the bar is unknown) and starts again from its beginning
-    /// as the riser's four bars end (the end of its file when the bar is unknown), with no gap. What the riser file
+    /// as the riser's four bars end (the end of its file when the bar is unknown), with no gap and with every part on,
+    /// including those the user had muted. What the riser file
     /// has after its four bars rings out under the song for one more bar at most. When the song is not playing the
     /// riser sounds alone and the song follows it. Moving the playhead or stopping cancels it. Needs a loaded song.
     /// </summary>

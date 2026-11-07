@@ -227,7 +227,7 @@ public sealed class WindowTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.True(button.IsPointerOver);
         var icon = button.GetVisualDescendants().OfType<GlyphPath>().Single();
-        Assert.Equal(Color.Parse("#1A1238"), ((ISolidColorBrush)icon.Stroke!).Color);   // dark on the light disc
+        Assert.Equal(Color.Parse("#1A1238"), ((ISolidColorBrush)icon.Fill!).Color);   // dark on the light disc
         Save(window, "riser-hover");
 
         await viewModel.Detail!.Player!.Riser!.PlayCommand.ExecuteAsync(null);

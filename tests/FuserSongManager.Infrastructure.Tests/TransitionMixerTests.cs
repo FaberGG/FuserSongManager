@@ -206,6 +206,58 @@ public class TransitionMixerTests
         Assert.Equal(RiserPhase.None, mixer.Phase);
     }
 
+    private static StemMixer TwoPartSong(long frames) =>
+        new([
+            (StemKind.Beat, new ConstantSource(Rate, frames, 1.0f)),
+            (StemKind.Bass, new ConstantSource(Rate, frames, 0.5f)),
+        ]) { Loop = true };
+
+    [Fact]
+    public void The_song_comes_back_with_every_part_on_even_those_muted_before_the_riser()
+    {
+        var song = TwoPartSong(10_000);
+        song.SetMuted(StemKind.Bass, true);
+        using var mixer = new TransitionMixer(song);
+        mixer.StartRiser(RiserMixer(0.0f, 400), Plan(0, 0, 400, songAudible: false));
+
+        var output = ReadFrames(mixer, 500);
+
+        Assert.Equal(0.6f * 0.0f, At(output, 399), 4);                 // the riser (silent here) is all there is
+        Assert.Equal(0.6f * 1.0f + 0.6f * 0.5f, At(output, 400), 4);   // the song, with the bass that was muted, from its first frame
+        Assert.False(song.IsMuted(StemKind.Bass));
+    }
+
+    [Fact]
+    public void Muted_parts_stay_muted_while_the_song_fades_under_the_riser()
+    {
+        var song = TwoPartSong(10_000);
+        song.SetMuted(StemKind.Bass, true);
+        using var mixer = new TransitionMixer(song);
+        mixer.StartRiser(RiserMixer(0.0f, 400), Plan(0, 200, 400));
+
+        var output = ReadFrames(mixer, 100);
+
+        Assert.True(song.IsMuted(StemKind.Bass));
+        Assert.True(At(output, 0) <= 0.6f + 1e-4f);   // only the beat: the muted bass is not added
+    }
+
+    [Fact]
+    public void Skipping_a_sounding_riser_also_turns_every_part_on_and_cancelling_one_that_is_waiting_does_not()
+    {
+        var song = TwoPartSong(10_000);
+        song.SetMuted(StemKind.Bass, true);
+        using var mixer = new TransitionMixer(song);
+
+        mixer.StartRiser(RiserMixer(0.0f, 400), Plan(100, 200, 400));
+        mixer.Skip();   // still waiting for the bar line
+        Assert.True(song.IsMuted(StemKind.Bass));
+
+        mixer.StartRiser(RiserMixer(0.0f, 400), Plan(0, 200, 400));
+        ReadFrames(mixer, 50);
+        mixer.Skip();   // sounding
+        Assert.False(song.IsMuted(StemKind.Bass));
+    }
+
     [Fact]
     public void The_riser_counts_as_over_for_the_app_once_the_song_is_back_even_while_its_tail_rings()
     {

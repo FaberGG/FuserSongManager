@@ -218,6 +218,11 @@ public sealed class NAudioStemPlayer : IStemPlayer
         lock (_gate) _mixer?.SetMuted(stem, muted);
     }
 
+    public bool IsMuted(StemKind stem)
+    {
+        lock (_gate) return _mixer?.IsMuted(stem) ?? false;
+    }
+
     public bool Loop
     {
         get => _loop;

@@ -22,7 +22,7 @@ public readonly record struct RiserPlan(long WaitFrames, long FadeFrames, long H
 /// <summary>
 /// The song's mixer with the riser transition on top, as one stream so the hand-over is exact to the sample:
 /// the song plays until the riser is due, the riser starts and the song fades out under it, and in the very
-/// buffer in which the riser's build-up ends the song starts again from its beginning, with no gap. The tail of the
+/// buffer in which the riser's build-up ends the song starts again from its beginning with all its parts on, with no gap. The tail of the
 /// riser file (the reverb after its last bar, and any padding) rings out under the song and fades away.
 /// Independent of any audio device so it can be tested; <see cref="NAudioStemPlayer"/> feeds it to the sound card.
 /// Not thread-safe by itself: the player serialises everything.
@@ -80,13 +80,23 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
         var sounding = Phase == RiserPhase.Playing;
         Cancel();
         if (sounding)
-            Song.Seek(0);
+            RestartSong();
+    }
+
+    /// <summary>
+    /// The song starts again from its beginning with every part on, even those the user had muted before the riser:
+    /// the transition leads into the whole song.
+    /// </summary>
+    private void RestartSong()
+    {
+        Song.Seek(0);
+        Song.ClearMuted();
     }
 
     /// <summary>The riser's build-up is over: the song starts again and the rest of the riser becomes its tail.</summary>
     private void BeginTail()
     {
-        Song.Seek(0);
+        RestartSong();
         if (_plan.TailFrames <= 0 || _handOver >= _riser!.LengthFrames)
         {
             Cancel();

@@ -58,16 +58,13 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
 
     /// <summary>Why the riser cannot be heard, or what went wrong.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ToolTip))]
     public partial string? Message { get; private set; }
 
     public bool IsPlaying => State == RiserState.Playing;
     public bool IsLoading => State == RiserState.Loading;
 
-    public string ToolTip =>
-        State == RiserState.Unavailable ? Message ?? "This song has no riser"
-        : State == RiserState.Playing ? "Cancel the riser: the song goes on, or starts again if the riser is already playing"
-        : "Riser: the transition effect of this song. It comes in on the next bar, the song fades out under it and starts again when it ends";
+    /// <summary>The button's hover text and accessible name: what pressing it does now. Why a riser is unavailable is shown in <see cref="Message"/>.</summary>
+    public string ToolTip => State == RiserState.Playing ? "Cancel" : "Riser";
 
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task Play()

@@ -202,6 +202,44 @@ public sealed class MediaViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task The_riser_runs_with_discs_muted_and_the_song_comes_back_with_all_of_them_on()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        var player = detail.Player!;
+        await player.PlayPauseCommand.ExecuteAsync(null);
+        player.Stems.Single(s => s.Kind == StemKind.Beat).IsOn = false;
+        player.Stems.Single(s => s.Kind == StemKind.Lead).IsOn = false;
+
+        await player.Riser!.PlayCommand.ExecuteAsync(null);
+        Assert.Equal([StemKind.Beat, StemKind.Lead], _library.Player.Muted.Order());   // the riser does not touch them
+        Assert.Equal(2, player.Stems.Count(s => !s.IsOn));
+
+        _library.Player.FinishRiser();   // the song starts again
+        await Task.Delay(500);   // the discs follow on the next tick
+
+        Assert.All(player.Stems, s => Assert.True(s.IsOn, $"{s.Name} is still off"));
+        Assert.Empty(_library.Player.Muted);
+    }
+
+    [AvaloniaFact]
+    public async Task Cancelling_the_riser_leaves_the_discs_as_they_were()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        var player = detail.Player!;
+        await player.PlayPauseCommand.ExecuteAsync(null);
+        player.Stems.Single(s => s.Kind == StemKind.Bass).IsOn = false;
+        await player.Riser!.PlayCommand.ExecuteAsync(null);
+
+        await player.Riser.PlayCommand.ExecuteAsync(null);   // cancelled before it sounded
+        await Task.Delay(500);
+
+        Assert.False(player.Stems.Single(s => s.Kind == StemKind.Bass).IsOn);
+        Assert.Equal([StemKind.Bass], _library.Player.Muted);
+    }
+
+    [AvaloniaFact]
     public async Task Pressing_the_riser_again_cancels_it_and_stopping_or_seeking_the_song_does_too()
     {
         var (vm, detail) = await SelectAsync("art_P");
@@ -253,7 +291,7 @@ public sealed class MediaViewModelTests : IDisposable
 
         Assert.Equal(RiserState.Unavailable, player.Riser.State);
         Assert.Equal("This song has no riser.", player.Riser.Message);
-        Assert.Equal("This song has no riser.", player.Riser.ToolTip);
+        Assert.Equal("Riser", player.Riser.ToolTip);   // the hover text stays short; the reason is in Message
         Assert.False(player.Riser.PlayCommand.CanExecute(null));
         Assert.Equal(PlayerState.Playing, player.State);
         Assert.Null(_library.Player.Riser);   // nothing was asked of the player
