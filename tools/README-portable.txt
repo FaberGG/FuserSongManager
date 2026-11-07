@@ -39,6 +39,7 @@ Fuser\Content\disabled_songs (disabled, outside Paks so Fuser does not load them
 Keyboard
 --------
 Z            autoplay on/off: the song plays as soon as you select it
+D            show or hide the key and BPM over each song's title
 Space        play / pause
 Enter        enable or disable the selected songs
 Arrow keys   move between songs; Ctrl+click and Shift+click select several; Ctrl+A selects all
@@ -52,6 +53,11 @@ Good to know
   mixed together; the game adds its own effects on top. Audio is only played inside the app, never
   written to files.
 - The first start after updating reads every song once more, to learn the instrument of each part.
+- The round button next to play is the riser: the transition effect the game plays to go to the next song, different
+  in every custom song. It comes in on the next bar, the song gives way to it with the effect chosen in "Riser
+  effect" (Low Pass Filter, Echo Out, Trance Gate...) and starts again from its beginning when the riser ends.
+- Songs left in the old Fuser\Content\Paks\disabled_songs folder are moved to Fuser\Content\disabled_songs the
+  first time the app starts (never while Fuser is running), so the game no longer loads them.
 - If something goes wrong, the log file says what happened and which file was involved.
 
 License

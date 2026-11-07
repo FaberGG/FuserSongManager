@@ -17,7 +17,8 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
 ## Features
 
 - **Album art grid** of your library, read from the songs' paks. Hover a song to see its genre, year and the instrument of
-  each part, in the game's colours. Disabled songs are dimmed; songs with problems (no `.sig`, unreadable pak) are flagged.
+  each part, in the game's colours. Each tile shows the song's key and BPM above its title (`D` hides them). Disabled
+  songs are dimmed; songs with problems (no `.sig`, unreadable pak) are flagged.
 - **Song panel** with the album art, genre, year, BPM and key, your rating, the custom song's author and your notes.
 - **Preview** that loops like the game: four phrases of eight bars, with a bar ruler to jump around. Beat, bass, loop and
   lead are four discs; click one to mute that part. Audio is only played, never written to disk.
@@ -34,6 +35,8 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
 - **Import** from `.zip`, `.rar` and `.7z`, at any folder depth, including "download all" archives that contain each
   song's own `.zip` or `.rar`. Only complete `.pak` + `.sig` pairs are installed; anything skipped is explained.
 - **Search, filters and sorting** by title, artist, genre, year, BPM and rating, instant even with thousands of songs.
+  The filter button next to the search opens a panel like the game's tempo and key settings: a BPM range, a key and
+  major or minor, each of which can be left on "any". Hover the button to see what is filtered.
 - **Play Fuser** clears the game's custom song cache and starts it (Steam, Epic or a local executable).
 - **Coming from Fuser Custom Song Manager v1**: on first run it brings your ratings, notes and authors. The v1 files are
   only read.
