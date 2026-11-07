@@ -43,6 +43,9 @@ public sealed class GameSlider : Control
     private const double TrackHeight = 6;
     private const double LabelGap = 8;
 
+    // Only what is drawn takes the pointer, so a transparent band around the track makes it easier to hit.
+    private const double HitHeight = 40;
+
     private static readonly IBrush Track = new SolidColorBrush(Color.Parse("#59FFFFFF"));
     private static readonly IBrush TrackOn = new SolidColorBrush(Color.Parse("#F2F0EEF8"));
     private static readonly IBrush Thumb = new LinearGradientBrush
@@ -136,6 +139,8 @@ public sealed class GameSlider : Control
 
         // The track sits in the middle of the control; the hover label hangs below it, over whatever is there.
         var y = size.Height / 2;
+        var band = Math.Min(HitHeight, size.Height);
+        context.DrawRectangle(Brushes.Transparent, null, new Rect(0, y - band / 2, size.Width, band));
         var track = new Rect(Inset, y - TrackHeight / 2, TrackWidth, TrackHeight);
         context.DrawRectangle(IsRange ? Track : TrackOn, null, new RoundedRect(track, TrackHeight / 2));
 

@@ -273,6 +273,13 @@ public sealed class WindowTests : IDisposable
         await Task.Delay(300);   // the row's colour
         SavePopup(popup, "filters-tempo-hover");
 
+        // The slider takes clicks a little above and below its track, not only on the thin line.
+        var nearMiss = key.TranslatePoint(new Point(key.Bounds.Width - 14, key.Bounds.Height / 2 - 16), popup)!.Value;
+        popup.MouseDown(nearMiss, MouseButton.Left);
+        popup.MouseUp(nearMiss, MouseButton.Left);
+        Assert.Equal("B", viewModel.KeyText);
+        viewModel.KeyIndex = 0;
+
         key.Focus();
         popup.KeyPressQwerty(PhysicalKey.End, RawInputModifiers.None);
         Assert.Equal("B", viewModel.KeyText);
