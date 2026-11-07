@@ -69,7 +69,8 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
 
     /// <param name="loadRiser">Reads the song's riser; null for a song whose riser cannot be offered.</param>
     public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log,
-        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null)
+        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null,
+        RiserEffect riserEffect = RiserEffect.LowPassFilter, Action<RiserEffect>? onRiserEffectChanged = null)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
@@ -78,7 +79,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
         Bpm = bpm is > 0 ? bpm : null;
         Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, instruments?.For(kind), OnStemToggled)).ToList();
         Riser = loadRiser is null ? null : new RiserViewModel(fileName, loadRiser, log, PrepareForRiserAsync,
-            () => BarSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null, OnRiserStarted);
+            () => BarSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null, OnRiserStarted, riserEffect, onRiserEffectChanged);
     }
 
     /// <summary>The song's riser, which the same player plays into the song; null when there is none to offer.</summary>

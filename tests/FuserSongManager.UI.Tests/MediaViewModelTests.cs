@@ -162,6 +162,30 @@ public sealed class MediaViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task The_riser_effects_are_named_as_djs_call_them_and_the_choice_is_what_plays_and_is_remembered()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        var riser = detail.Player!.Riser!;
+        Assert.Equal(
+            ["Fade Out", "Low Pass Filter", "Echo Out", "Dub Echo", "Trance Gate", "Strip Down", "Rhythm Hold"],
+            riser.Effects.Select(e => e.Label));
+        Assert.Equal(RiserEffect.LowPassFilter, riser.SelectedEffect.Value);   // the default
+
+        riser.SelectedEffect = riser.Effects.Single(e => e.Label == "Trance Gate");
+        await detail.Player.PlayPauseCommand.ExecuteAsync(null);
+        await riser.PlayCommand.ExecuteAsync(null);
+
+        Assert.Equal(RiserEffect.TranceGate, _library.Player.RiserEffectUsed);
+        Assert.Equal(RiserEffect.TranceGate, _library.Settings.Current.RiserEffect);
+        vm.Dispose();
+
+        // Another song, another session: it starts with the same effect.
+        var (again, other) = await SelectAsync("plain_P");
+        using var _ = again;
+        Assert.Equal("Trance Gate", other.Player!.Riser!.SelectedEffect.Label);
+    }
+
+    [AvaloniaFact]
     public async Task Riser_before_the_song_was_played_loads_it_and_leads_into_it()
     {
         var (vm, detail) = await SelectAsync("art_P");

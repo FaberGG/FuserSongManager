@@ -28,6 +28,9 @@ public sealed class StemMixer : IDisposable
 
     private readonly IReadOnlyList<(StemKind Kind, IStemSource Source)> _stems;
     private readonly HashSet<StemKind> _muted = [];
+    // Volume of each part, 1 normally. It moves linearly to its target over the next read, so changes do not click.
+    private readonly float[] _gain = [1f, 1f, 1f, 1f];
+    private readonly float[] _gainTarget = [1f, 1f, 1f, 1f];
     private float[] _scratch = [];
 
     public StemMixer(IReadOnlyList<(StemKind Kind, IStemSource Source)> stems)
@@ -57,6 +60,16 @@ public sealed class StemMixer : IDisposable
     public bool IsMuted(StemKind kind) => _muted.Contains(kind);
 
     public void ClearMuted() => _muted.Clear();
+
+    /// <summary>Sets the volume the part reaches by the end of the next read (a ramp from where it is now).</summary>
+    public void SetGain(StemKind kind, float gain) => _gainTarget[(int)kind] = gain;
+
+    /// <summary>Every part back at full volume at once.</summary>
+    public void ResetGains()
+    {
+        Array.Fill(_gain, 1f);
+        Array.Fill(_gainTarget, 1f);
+    }
 
     /// <summary>
     /// Starts again from the beginning instead of ending, as the game does: a Fuser song is four phrases of
@@ -116,6 +129,9 @@ public sealed class StemMixer : IDisposable
                 if (n <= 0) break;
                 read += n;
             }
+            var gain = _gain[(int)kind];
+            var target = _gainTarget[(int)kind];
+            _gain[(int)kind] = target;
             if (_muted.Contains(kind))
                 continue;
 
@@ -127,8 +143,9 @@ public sealed class StemMixer : IDisposable
                     left = right = _scratch[f];
                 else
                     (left, right) = (_scratch[f * 2], _scratch[f * 2 + 1]);
-                output[f * 2] += left * PartGain;
-                output[f * 2 + 1] += right * PartGain;
+                var g = PartGain * (gain == target ? target : gain + (target - gain) * (f + 1) / frames);
+                output[f * 2] += left * g;
+                output[f * 2 + 1] += right * g;
             }
         }
 

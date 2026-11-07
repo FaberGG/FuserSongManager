@@ -166,7 +166,7 @@ public sealed class NAudioStemPlayer : IStemPlayer
         get { lock (_gate) return _transition?.IsRiserActive ?? false; }
     }
 
-    public void PlayRiser(SongAudio riser, TimeSpan? bar)
+    public void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect)
     {
         if (_mixer is null)
             throw new InvalidOperationException("Nothing is loaded.");
@@ -211,7 +211,7 @@ public sealed class NAudioStemPlayer : IStemPlayer
                 }
                 // The song fades over two bars and starts again after the riser's four. The riser file often goes on
                 // past them with a silent or dying tail: it rings out for one more bar at most.
-                plan = new RiserPlan(wait, 2 * barFrames, RiserBars * barFrames, barFrames, playing);
+                plan = new RiserPlan(wait, 2 * barFrames, RiserBars * barFrames, barFrames, playing, RiserEffects.Create(effect, rate, barFrames));
             }
             _transition!.StartRiser(riserMixer, plan);
         }

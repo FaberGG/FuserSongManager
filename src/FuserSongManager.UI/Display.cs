@@ -23,6 +23,19 @@ public static class Display
 
     public static string Mode(SongMode? mode) => mode?.ToString() ?? "";
 
+    /// <summary>The effect's name as DJs say it (they are the names of the moves, so they stay in English).</summary>
+    public static string RiserEffect(RiserEffect effect) => effect switch
+    {
+        Core.Models.RiserEffect.FadeOut => "Fade Out",
+        Core.Models.RiserEffect.LowPassFilter => "Low Pass Filter",
+        Core.Models.RiserEffect.EchoOut => "Echo Out",
+        Core.Models.RiserEffect.DubEcho => "Dub Echo",
+        Core.Models.RiserEffect.TranceGate => "Trance Gate",
+        Core.Models.RiserEffect.StripDown => "Strip Down",
+        Core.Models.RiserEffect.RhythmHold => "Rhythm Hold",
+        _ => effect.ToString(),
+    };
+
     public static string Location(SongLocation location) => location == SongLocation.Enabled ? "Enabled" : "Disabled";
 
     public static string Stars(int rating)

@@ -13,11 +13,13 @@ public enum RiserPhase
 
 /// <summary>When everything happens, in frames at the song's rate.</summary>
 /// <param name="WaitFrames">Song frames to play before the riser starts (the rest of the current bar).</param>
-/// <param name="FadeFrames">The song fades out over this many frames from the start of the riser.</param>
+/// <param name="FadeFrames">The song fades out over this many frames from the start of the riser. Not used when there is an <paramref name="Effect"/>.</param>
 /// <param name="HandOverFrames">The song starts again from its beginning once the riser has played this long.</param>
 /// <param name="TailFrames">What is left of the riser after that rings out for at most this long, fading away.</param>
 /// <param name="SongAudible">False when the song is not playing: only the riser is heard, then the song starts.</param>
-public readonly record struct RiserPlan(long WaitFrames, long FadeFrames, long HandOverFrames, long TailFrames, bool SongAudible);
+/// <param name="Effect">What the song does while the riser comes in instead of the plain fade; null is the fade.</param>
+public readonly record struct RiserPlan(long WaitFrames, long FadeFrames, long HandOverFrames, long TailFrames, bool SongAudible,
+    RiserEffectProcessor? Effect = null);
 
 /// <summary>
 /// The song's mixer with the riser transition on top, as one stream so the hand-over is exact to the sample:
@@ -37,6 +39,8 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
     private long _tailFrames;       // riser frames played since the hand-over
     private bool _inTail;
     private float[] _scratch = [];
+
+    private const int MaxEffectFrames = 128;
 
     public StemMixer Song { get; } = song;
 
@@ -69,6 +73,7 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
         _riser = null;
         _waitFrames = 0;
         _inTail = false;
+        Song.ResetGains();   // an effect may have turned some parts down
     }
 
     /// <summary>
@@ -91,6 +96,7 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
     {
         Song.Seek(0);
         Song.ClearMuted();
+        Song.ResetGains();
     }
 
     /// <summary>The riser's build-up is over: the song starts again and the rest of the riser becomes its tail.</summary>
@@ -129,6 +135,8 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
             {
                 var frames = (int)Math.Min(wanted / StemMixer.OutputChannels, _waitFrames);
                 read = Song.Read(buffer, offset + total, frames * StemMixer.OutputChannels);
+                if (_plan.SongAudible)
+                    _plan.Effect?.BeforeRiser(buffer, offset + total, read / StemMixer.OutputChannels, _waitFrames);
                 _waitFrames = read < frames * StemMixer.OutputChannels ? 0 : _waitFrames - read / StemMixer.OutputChannels;
             }
             else if (!_inTail)
@@ -159,6 +167,10 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
             return -1;
         }
 
+        // An effect works in short stretches whatever the caller's buffer, so the volumes it ramps and the coefficients it
+        // updates keep the same resolution (about 3 ms at 44.1 kHz).
+        if (_plan.Effect is not null)
+            count = Math.Min(count, MaxEffectFrames * StemMixer.OutputChannels);
         var read = _riser!.Read(buffer, offset, (int)Math.Min(count, remaining * StemMixer.OutputChannels));
         if (read == 0)
         {
@@ -166,7 +178,26 @@ public sealed class TransitionMixer(StemMixer song) : IDisposable
             return -1;
         }
 
-        if (_plan.SongAudible && _riserFrames < _plan.FadeFrames)
+        if (_plan.SongAudible && _plan.Effect is { } effect)
+        {
+            if (_scratch.Length < read)
+                _scratch = new float[read];
+            var frames = read / StemMixer.OutputChannels;
+            effect.SetStemGains(Song, _riserFrames, frames);
+            if (effect.NeedsSong(_riserFrames))
+            {
+                var got = Song.Read(_scratch, 0, read);
+                Array.Clear(_scratch, got, read - got);
+            }
+            else
+            {
+                Array.Clear(_scratch, 0, read);
+            }
+            effect.Process(_scratch, frames, _riserFrames);
+            for (var i = 0; i < read; i++)
+                buffer[offset + i] = Math.Clamp(buffer[offset + i] + _scratch[i], -1f, 1f);
+        }
+        else if (_plan.SongAudible && _riserFrames < _plan.FadeFrames)
         {
             if (_scratch.Length < read)
                 _scratch = new float[read];

@@ -234,6 +234,13 @@ public sealed class WindowTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("playing", button.Classes);
         Save(window, "riser-playing");
+
+        // The effect selector, with the names DJs use.
+        var effects = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.ItemsSource == viewModel.Detail.Player.Riser!.Effects);
+        Assert.Equal("Low Pass Filter", ((Option<RiserEffect>)effects.SelectedItem!).Label);
+        effects.IsDropDownOpen = true;
+        Dispatcher.UIThread.RunJobs();
+        Save(window, "riser-effects-open");
         window.Close();
     }
 

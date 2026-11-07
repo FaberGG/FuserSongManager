@@ -25,6 +25,10 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
   the game uses to go to the next song, which is different for every custom song. If the song is playing, the riser
   comes in on the next bar, the song fades out under it over two bars, and the song starts again from its beginning
   as the riser's four bars end, with no gap. Press it again to cancel. Some songs ship the riser empty; the app says so.
+  **Riser effect** chooses what the song does while the riser comes in, with the names DJs use: Fade Out, Low Pass
+  Filter (muffles the song as the filter closes), Echo Out and Dub Echo (the song is cut and its last beat rings in
+  an echo), Trance Gate (a gate chops it faster every bar), Strip Down (the parts leave one per bar) and Rhythm Hold
+  (only beat and bass hold the groove). The choice is remembered.
 - **Enable and disable** songs (one or many: Ctrl+click, Shift+click, Ctrl+A). Files are moved between
   `custom_songs` and `disabled_songs`, never while Fuser is running.
 - **Import** from `.zip`, `.rar` and `.7z`, at any folder depth, including "download all" archives that contain each

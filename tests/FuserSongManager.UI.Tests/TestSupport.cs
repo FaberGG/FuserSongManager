@@ -231,11 +231,13 @@ public sealed class FakeStemPlayer : IStemPlayer
     public int RiserStops { get; private set; }
 
     public Exception? RiserFailure { get; set; }
+    public RiserEffect? RiserEffectUsed { get; private set; }
 
-    public void PlayRiser(SongAudio riser, TimeSpan? bar)
+    public void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect)
     {
         if (RiserFailure is not null)
             throw RiserFailure;
+        RiserEffectUsed = effect;
         SongWasPlayingAtRiser = IsPlaying;
         Riser = riser;
         RiserBar = bar;

@@ -274,6 +274,15 @@
                                                                     <Path Data="{StaticResource Ui.Riser}" Fill="{Binding $parent[Button].Foreground}" Width="28" Height="28" Stretch="Uniform" />
                                                                 </Button>
                                                             </Grid>
+                                                            <!-- What the song does while the riser comes in: the moves DJs use to go from one track to the next. -->
+                                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                                                  IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                                <TextBlock Classes="label" Text="RISER EFFECT" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" ItemsSource="{Binding Riser.Effects}" SelectedItem="{Binding Riser.SelectedEffect}"
+                                                                          HorizontalAlignment="Stretch" MinHeight="40" FontSize="15"
+                                                                          AutomationProperties.Name="Riser effect"
+                                                                          ToolTip.Tip="What the song does while the riser comes in" />
+                                                            </Grid>
                                                             <c:LoopTimeline Height="30" Position="{Binding PositionSeconds}" Duration="{Binding DurationSeconds}"
                                                                             BarCount="{Binding BarCount}" CanSeek="{Binding CanSeek}"
                                                                             ToolTip.Tip="One mark per bar; the tall ones start each phrase. Click to jump." />

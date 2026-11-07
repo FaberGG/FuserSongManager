@@ -114,8 +114,10 @@ public interface IStemPlayer : IDisposable
     /// including those the user had muted. What the riser file
     /// has after its four bars rings out under the song for one more bar at most. When the song is not playing the
     /// riser sounds alone and the song follows it. Moving the playhead or stopping cancels it. Needs a loaded song.
+    /// <paramref name="effect"/> is what the song does while the riser comes in (instead of the plain fade); it
+    /// needs the bar, so without it the song just fades.
     /// </summary>
-    void PlayRiser(SongAudio riser, TimeSpan? bar);
+    void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect);
 
     /// <summary>True from <see cref="PlayRiser"/> until the song takes over (or the riser is cancelled).</summary>
     bool IsRiserActive { get; }

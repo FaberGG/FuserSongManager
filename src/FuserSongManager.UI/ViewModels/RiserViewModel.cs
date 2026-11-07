@@ -34,15 +34,33 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
     private readonly Func<TimeSpan?> _barLength;
     private readonly Action _started;
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly Action<RiserEffect>? _onEffectChanged;
     private SongAudio? _audio;
     private IStemPlayer? _player;
+
+    /// <summary>What the song does while the riser comes in, to pick from.</summary>
+    public IReadOnlyList<Option<RiserEffect>> Effects { get; }
+
+    [ObservableProperty]
+    public partial Option<RiserEffect> SelectedEffect { get; set; }
+
+    partial void OnSelectedEffectChanged(Option<RiserEffect> value)
+    {
+        if (value is not null)
+            _onEffectChanged?.Invoke(value.Value);
+    }
 
     /// <param name="preparePlayer">The preview's player with the song loaded (loading it if needed); null when the song cannot be played.</param>
     /// <param name="barLength">One bar of the song; null when its tempo is not known.</param>
     /// <param name="started">Called once the riser is under way: the preview is now playing.</param>
+    /// <param name="effect">The effect chosen last time; <paramref name="onEffectChanged"/> hears each new choice, to remember it.</param>
     public RiserViewModel(string fileName, Func<SongAudio> loadAudio, Serilog.ILogger log,
-        Func<Task<IStemPlayer?>> preparePlayer, Func<TimeSpan?> barLength, Action started)
+        Func<Task<IStemPlayer?>> preparePlayer, Func<TimeSpan?> barLength, Action started,
+        RiserEffect effect = RiserEffect.LowPassFilter, Action<RiserEffect>? onEffectChanged = null)
     {
+        _onEffectChanged = onEffectChanged;
+        Effects = [.. Enum.GetValues<RiserEffect>().Select(e => new Option<RiserEffect>(Display.RiserEffect(e), e))];
+        SelectedEffect = Effects.Single(o => o.Value == effect);
         _fileName = fileName;
         _loadAudio = loadAudio;
         _log = log;
@@ -93,7 +111,7 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            player.PlayRiser(_audio, _barLength());
+            player.PlayRiser(_audio, _barLength(), SelectedEffect.Value);
             _player = player;
             _log.Information("Riser of {FileName}: {Stems}", _fileName, string.Join(", ", _audio.Stems.Select(s => s.Kind)));
         }
