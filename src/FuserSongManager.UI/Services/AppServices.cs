@@ -59,6 +59,9 @@ public sealed class AppServices
     /// <summary>Creates the audio player for the preview. Null hides the player.</summary>
     public Func<IStemPlayer>? CreatePlayer { get; init; }
 
+    /// <summary>Creates the player of the riser, which plays on its own next to the preview's. <see cref="CreatePlayer"/> when null.</summary>
+    public Func<IStemPlayer>? CreateRiserPlayer { get; init; }
+
     private AlbumArtService? _albumArt;
 
     public AlbumArtService? AlbumArt => Media is null ? null : _albumArt ??= new AlbumArtService(Media, ArtCacheDirectory);

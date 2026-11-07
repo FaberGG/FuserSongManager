@@ -9,7 +9,7 @@ namespace FuserSongManager.Infrastructure.Pak;
 /// <summary>
 /// Album art and audio of a custom song pak (RF-PEN-13, RF-PEN-14). The layout follows FuserCustomSongCreator:
 /// art in <c>UI/AlbumArt/T_{song}[_small]</c> (DXT1 textures); audio in the <c>patches/{song}{cel}_fusion</c>
-/// asset of each part, one encrypted MOGG per keyzone.
+/// asset of each part, one encrypted MOGG per keyzone. The riser has the same layout in <c>{song}{cel}_trans_fusion</c>.
 /// </summary>
 public sealed class PakMediaReader : ISongMediaReader
 {
@@ -57,21 +57,29 @@ public sealed class PakMediaReader : ISongMediaReader
         return png.ToArray();
     }
 
-    public SongAudio ReadAudio(string pakPath, SongMode? mode)
+    public SongAudio ReadAudio(string pakPath, SongMode? mode) => ReadParts(pakPath, mode, riser: false);
+
+    public SongAudio ReadRiser(string pakPath, SongMode? mode) => ReadParts(pakPath, mode, riser: true);
+
+    /// <summary>The playing parts of the song, or of its riser: both are one fusion patch per part.</summary>
+    private static SongAudio ReadParts(string pakPath, SongMode? mode, bool riser)
     {
         using var provider = FuserPak.Open(pakPath);
         var song = FuserPak.ResolveSongName(provider, pakPath);
         var stems = new List<SongStem>(Cels.Length);
         var problems = new List<string>();
+        var fusion = riser ? "_trans_fusion" : "_fusion";
 
         foreach (var (kind, suffix) in Cels)
         {
-            var path = $"Fuser/Content/Audio/Songs/{song}/{song}{suffix}/patches/{song}{suffix}_fusion.uexp";
+            var path = $"Fuser/Content/Audio/Songs/{song}/{song}{suffix}/patches/{song}{suffix}{fusion}.uexp";
             if (!provider.TryGetGameFile(path, out _))
             {
-                // Paks whose folders do not follow the song name: any non-transition fusion asset of this part.
+                // Paks whose folders do not follow the song name: any fusion asset of this part (the song's own
+                // audio is never a transition one).
                 path = provider.Files.Keys.FirstOrDefault(k =>
-                    k.EndsWith($"{suffix}_fusion.uexp", StringComparison.OrdinalIgnoreCase) && !k.Contains("_trans_", StringComparison.OrdinalIgnoreCase)) ?? path;
+                    k.EndsWith($"{suffix}{fusion}.uexp", StringComparison.OrdinalIgnoreCase)
+                    && (riser || !k.Contains("_trans_", StringComparison.OrdinalIgnoreCase))) ?? path;
             }
             if (!provider.TryGetGameFile(path, out _))
             {
@@ -99,7 +107,12 @@ public sealed class PakMediaReader : ISongMediaReader
         }
 
         if (stems.Count == 0)
+        {
+            // Many custom songs ship their riser files without any sound in them.
+            if (riser)
+                throw new InvalidDataException("This song has no riser.");
             throw new InvalidDataException(problems.Count == 0 ? "The song's parts are all empty." : $"The pak has no playable audio ({string.Join("; ", problems)}).");
+        }
         return new SongAudio(song, stems);
     }
 

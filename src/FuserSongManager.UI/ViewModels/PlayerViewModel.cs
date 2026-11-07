@@ -67,8 +67,10 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     private volatile PlaybackEndedEventArgs? _ended;
     private bool _syncingPosition;
 
+    /// <param name="loadRiser">Reads the song's riser; null for a song whose riser cannot be offered.</param>
+    /// <param name="createRiserPlayer">Creates the riser's own player; <paramref name="createPlayer"/> when null.</param>
     public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log,
-        SongInstruments? instruments = null, int? bpm = null)
+        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null, Func<IStemPlayer>? createRiserPlayer = null)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
@@ -76,6 +78,19 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
         _log = log;
         Bpm = bpm is > 0 ? bpm : null;
         Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, instruments?.For(kind), OnStemToggled)).ToList();
+        Riser = loadRiser is null ? null : new RiserViewModel(fileName, loadRiser, createRiserPlayer ?? createPlayer, log, PausePreview);
+    }
+
+    /// <summary>The song's riser, which plays on its own; null when there is none to offer.</summary>
+    public RiserViewModel? Riser { get; }
+
+    /// <summary>Pauses the preview if it is playing, so something else can be heard alone.</summary>
+    private void PausePreview()
+    {
+        if (State != PlayerState.Playing)
+            return;
+        _player!.Pause();
+        State = PlayerState.Paused;
     }
 
     /// <summary>Beats per minute, to count bars; null when the pak does not say.</summary>
@@ -207,6 +222,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
 
     private void StartPlaying()
     {
+        Riser?.Stop();   // one thing at a time
         _ended = null;
         _player!.Play();
         State = PlayerState.Playing;
@@ -256,6 +272,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _lifetime.Cancel();
+        Riser?.Dispose();
         _player?.Dispose();
         _player = null;
     }

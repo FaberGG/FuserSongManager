@@ -70,6 +70,13 @@ public interface ISongMediaReader
     /// Throws <see cref="NotSupportedException"/> or <see cref="InvalidDataException"/> with a clear message when the audio cannot be read.
     /// </summary>
     SongAudio ReadAudio(string pakPath, SongMode? mode);
+
+    /// <summary>
+    /// The riser of the song: the transition effect the game plays to go from this song to the next, made of one
+    /// short clip per part. Same shape as <see cref="ReadAudio"/>. Throws <see cref="InvalidDataException"/> when
+    /// the pak has no riser or all of its clips are empty.
+    /// </summary>
+    SongAudio ReadRiser(string pakPath, SongMode? mode);
 }
 
 /// <summary>Plays the parts of one song together, each of which can be muted (RF-PEN-13).</summary>

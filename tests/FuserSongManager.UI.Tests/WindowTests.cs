@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
@@ -12,6 +13,7 @@ using FuserSongManager.Core.Models;
 using FuserSongManager.UI.ViewModels;
 using FuserSongManager.UI.Views;
 using static FuserSongManager.UI.Tests.TestLibrary;
+using GlyphPath = Avalonia.Controls.Shapes.Path;
 
 namespace FuserSongManager.UI.Tests;
 
@@ -199,6 +201,39 @@ public sealed class WindowTests : IDisposable
         Assert.All(items, item => Assert.Single(item.GetVisualDescendants().OfType<Controls.SweepFill>()));
         Assert.Same(Application.Current!.FindResource("Fsm.Selected"), items.Single(i => i.IsSelected).Background);
         Save(window, "main-window-sort-open");
+        window.Close();
+    }
+
+    /// <summary>The riser button next to play: the game's round lilac disc, its icon still visible when hovered, and a pulse while it plays.</summary>
+    [AvaloniaFact]
+    public async Task Riser_button_sits_next_to_play_and_shows_its_icon_idle_hovered_and_playing()
+    {
+        _library.AddPak(SongLocation.Enabled, "brightside_P", Meta("Mr. Brightside", "The Killers", Genre.Rock, 2003, 148));
+        var viewModel = _library.CreateMainViewModel();
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        await WaitUntil(() => viewModel.Rows.Count == 1 && !viewModel.IsBusy);
+        viewModel.Click(Row(viewModel, "brightside_P"));
+        Dispatcher.UIThread.RunJobs();
+
+        var button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("riser"));
+        var play = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("play"));
+        Assert.True(button.IsVisible);
+        Assert.True(button.TranslatePoint(new Point(), window)!.Value.X > play.TranslatePoint(new Point(), window)!.Value.X);
+        Assert.Equal(play.TranslatePoint(new Point(0, 28), window)!.Value.Y, button.TranslatePoint(new Point(0, 24), window)!.Value.Y, 1);   // same row, centred
+        Save(window, "riser-idle");
+
+        window.MouseMove(button.TranslatePoint(new Point(24, 24), window)!.Value);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(button.IsPointerOver);
+        var icon = button.GetVisualDescendants().OfType<GlyphPath>().Single();
+        Assert.Equal(Color.Parse("#1A1238"), ((ISolidColorBrush)icon.Stroke!).Color);   // dark on the light disc
+        Save(window, "riser-hover");
+
+        await viewModel.Detail!.Player!.Riser!.PlayCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("playing", button.Classes);
+        Save(window, "riser-playing");
         window.Close();
     }
 

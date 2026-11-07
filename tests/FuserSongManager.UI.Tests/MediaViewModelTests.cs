@@ -138,6 +138,91 @@ public sealed class MediaViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Riser_plays_once_in_the_songs_key_on_its_own_and_can_be_heard_again()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        var player = detail.Player!;
+        var riser = player.Riser!;
+        Assert.Equal(RiserState.Idle, riser.State);
+        Assert.Empty(_library.Media.RiserReads);   // nothing read until the button is pressed
+
+        await player.PlayPauseCommand.ExecuteAsync(null);   // the preview is playing
+        await riser.PlayCommand.ExecuteAsync(null);
+
+        Assert.Equal(RiserState.Playing, riser.State);
+        Assert.True(_library.RiserPlayer.IsPlaying);
+        Assert.False(_library.RiserPlayer.Loop);   // once, not looped like the song
+        Assert.Equal(SongMode.Minor, Assert.Single(_library.Media.RiserReads).Mode);
+        Assert.All(_library.RiserPlayer.Loaded!.Stems, s => Assert.Equal("riser", s.ZoneLabel));
+        // It is heard alone, and the preview keeps its place for later.
+        Assert.Equal(PlayerState.Paused, player.State);
+        Assert.False(_library.Player.IsPlaying);
+
+        await riser.PlayCommand.ExecuteAsync(null);   // the same button stops it
+        Assert.Equal(RiserState.Idle, riser.State);
+        Assert.False(_library.RiserPlayer.IsPlaying);
+
+        await riser.PlayCommand.ExecuteAsync(null);   // and plays it again from the start, without reading the pak again
+        Assert.Equal(RiserState.Playing, riser.State);
+        Assert.Equal(TimeSpan.Zero, _library.RiserPlayer.Position);
+        Assert.Single(_library.Media.RiserReads);
+        Assert.Equal(2, _library.RiserPlayer.Plays);
+    }
+
+    [AvaloniaFact]
+    public async Task Riser_goes_back_to_ready_when_it_ends_and_yields_to_the_preview()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        var player = detail.Player!;
+        var riser = player.Riser!;
+
+        await riser.PlayCommand.ExecuteAsync(null);
+        _library.RiserPlayer.End();
+        await Task.Delay(400);   // noticed by the riser's clock
+        Assert.Equal(RiserState.Idle, riser.State);
+        Assert.True(riser.PlayCommand.CanExecute(null));
+
+        await riser.PlayCommand.ExecuteAsync(null);
+        await player.PlayPauseCommand.ExecuteAsync(null);   // playing the song stops the riser
+        Assert.Equal(RiserState.Idle, riser.State);
+        Assert.False(_library.RiserPlayer.IsPlaying);
+        Assert.True(_library.Player.IsPlaying);
+    }
+
+    [AvaloniaFact]
+    public async Task A_song_without_a_riser_says_so_and_leaves_the_preview_alone()
+    {
+        _library.Media.RiserError = new InvalidDataException("This song has no riser.");
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        var player = detail.Player!;
+        await player.PlayPauseCommand.ExecuteAsync(null);
+
+        await player.Riser!.PlayCommand.ExecuteAsync(null);
+
+        Assert.Equal(RiserState.Unavailable, player.Riser.State);
+        Assert.Equal("This song has no riser.", player.Riser.Message);
+        Assert.Equal("This song has no riser.", player.Riser.ToolTip);
+        Assert.False(player.Riser.PlayCommand.CanExecute(null));
+        Assert.Equal(PlayerState.Playing, player.State);
+        Assert.True(_library.Player.IsPlaying);
+    }
+
+    [AvaloniaFact]
+    public async Task Selecting_another_song_releases_the_riser()
+    {
+        var (vm, detail) = await SelectAsync("art_P");
+        using var _ = vm;
+        await detail.Player!.Riser!.PlayCommand.ExecuteAsync(null);
+
+        vm.SetSelection([vm.Rows.Single(r => r.FileName == "plain_P")]);
+
+        Assert.True(_library.RiserPlayer.Disposed);
+    }
+
+    [AvaloniaFact]
     public async Task Selecting_another_song_or_launching_the_game_stops_the_preview()
     {
         var (vm, detail) = await SelectAsync("art_P");

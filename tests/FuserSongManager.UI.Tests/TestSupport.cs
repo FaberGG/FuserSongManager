@@ -53,6 +53,7 @@ public sealed class TestLibrary : IDisposable
     public FakeShell Shell { get; } = new();
     public FakeMedia Media { get; } = new();
     public FakeStemPlayer Player { get; } = new();
+    public FakeStemPlayer RiserPlayer { get; } = new();
 
     public string AddPak(SongLocation location, string fileName, SongMetadata? metadata = null, bool withSig = true, string? subfolder = null)
     {
@@ -76,6 +77,7 @@ public sealed class TestLibrary : IDisposable
             Media = Media,
             ArtCacheDirectory = Path.Combine(Root, "art"),
             CreatePlayer = () => Player,
+            CreateRiserPlayer = () => RiserPlayer,
         };
     }
 
@@ -174,6 +176,8 @@ public sealed class FakeMedia : ISongMediaReader
     public HashSet<StemKind> Stems { get; } = [.. Enum.GetValues<StemKind>()];
     public Exception? AudioError { get; set; }
     public List<(string Pak, SongMode? Mode)> AudioReads { get; } = [];
+    public Exception? RiserError { get; set; }
+    public List<(string Pak, SongMode? Mode)> RiserReads { get; } = [];
 
     public byte[]? ReadAlbumArt(string pakPath) => Art.GetValueOrDefault(Path.GetFileNameWithoutExtension(pakPath));
 
@@ -183,6 +187,14 @@ public sealed class FakeMedia : ISongMediaReader
         if (AudioError is not null)
             throw AudioError;
         return new SongAudio(Path.GetFileNameWithoutExtension(pakPath), Stems.Order().Select(k => new SongStem(k, mode?.ToString() ?? "", [1])).ToList());
+    }
+
+    public SongAudio ReadRiser(string pakPath, SongMode? mode)
+    {
+        RiserReads.Add((pakPath, mode));
+        if (RiserError is not null)
+            throw RiserError;
+        return new SongAudio(Path.GetFileNameWithoutExtension(pakPath), Stems.Order().Select(k => new SongStem(k, "riser", [2])).ToList());
     }
 
     /// <summary>A solid-colour PNG, as the real reader returns.</summary>

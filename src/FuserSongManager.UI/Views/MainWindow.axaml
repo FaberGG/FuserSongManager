@@ -251,7 +251,7 @@
                                                 <ContentControl.ContentTemplate>
                                                     <DataTemplate x:DataType="vm:PlayerViewModel">
                                                         <StackPanel Spacing="12">
-                                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
                                                                 <Button Classes="play" Command="{Binding PlayPauseCommand}"
                                                                         ToolTip.Tip="Listen to the song in a loop, as it plays in the game (Space)"
                                                                         AutomationProperties.Name="{Binding PlayPauseText}">
@@ -266,6 +266,14 @@
                                                                     <TextBlock Text="{Binding TimeText}" FontSize="16" FontWeight="Bold" FontFeatures="tnum" />
                                                                     <TextBlock Classes="hint" Text="{Binding BarText}" FontSize="13" FontFeatures="tnum" />
                                                                 </StackPanel>
+                                                                <!-- The riser: the transition effect the game plays to go to the next song, different for each song. -->
+                                                                <Button Grid.Column="2" Classes="riser" Classes.playing="{Binding Riser.IsPlaying}"
+                                                                        Command="{Binding Riser.PlayCommand}" ToolTip.Tip="{Binding Riser.ToolTip}"
+                                                                        IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                                        AutomationProperties.Name="Listen to the riser">
+                                                                    <Path Data="{StaticResource Ui.Riser}" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="2"
+                                                                          StrokeLineCap="Round" StrokeJoin="Round" Width="26" Height="26" Stretch="Uniform" />
+                                                                </Button>
                                                             </Grid>
                                                             <c:LoopTimeline Height="30" Position="{Binding PositionSeconds}" Duration="{Binding DurationSeconds}"
                                                                             BarCount="{Binding BarCount}" CanSeek="{Binding CanSeek}"
@@ -320,6 +328,8 @@
                                                             </ItemsControl>
                                                             <TextBlock Classes="warning" Text="{Binding Message}"
                                                                        IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                            <TextBlock Classes="warning" Text="{Binding Riser.Message}"
+                                                                       IsVisible="{Binding Riser.Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ContentControl.ContentTemplate>
