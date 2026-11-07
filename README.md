@@ -43,6 +43,7 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
 | Key | Action |
 |---|---|
 | `Z` | Autoplay on/off: the song plays as soon as you select it |
+| `D` | Show or hide the key and BPM over each song's title |
 | `Space` | Play / pause |
 | `Enter` | Enable or disable the selected songs |
 | Arrow keys | Move between songs |

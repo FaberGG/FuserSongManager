@@ -94,6 +94,61 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Tempo_key_and_mode_filters_narrow_the_list_and_clear_with_the_rest()
+    {
+        _library.AddPak(SongLocation.Enabled, "fast_P", Meta("Fast", "Band", bpm: 170) with { Key = MusicalKey.Gb, Mode = SongMode.Major });
+        _library.AddPak(SongLocation.Enabled, "slow_P", Meta("Slow", "Band", bpm: 80) with { Key = MusicalKey.C, Mode = SongMode.Major });
+        using var vm = await StartAsync();
+
+        // The tempo slider spans the library, and at its ends it filters nothing.
+        Assert.Equal((80, 170), (vm.BpmMinimum, vm.BpmMaximum));
+        Assert.Equal((80d, 170d), (vm.BpmLow, vm.BpmHigh));
+        Assert.Equal("Any tempo", vm.BpmText);
+        Assert.False(vm.HasAdvancedFilter);
+
+        vm.BpmLow = 100;
+        await Task.Delay(MainViewModel.SearchDelay * 3);   // waits for the slider to rest, like the search
+        Assert.Equal(5, vm.VisibleSongs.Count);
+        Assert.Equal("100–170 BPM", vm.BpmText);
+        Assert.True(vm.HasAdvancedFilter);
+        Assert.True(vm.ClearFiltersCommand.CanExecute(null));
+
+        vm.KeyIndex = (int)MusicalKey.Gb + 1;
+        Assert.Equal("G♭", vm.KeyText);
+        Assert.Equal(["Fast"], VisibleTitles(vm));
+
+        vm.ModeChoices.Single(c => c.Label == "Minor").SelectCommand.Execute(null);
+        Assert.Empty(vm.VisibleSongs);
+        vm.ModeChoices.Single(c => c.Label == "Major").SelectCommand.Execute(null);
+        Assert.Equal(["Fast"], VisibleTitles(vm));
+        Assert.Equal("Filtered by 100–170 BPM · G♭ · Major", vm.AdvancedFilterSummary);
+
+        vm.ClearFiltersCommand.Execute(null);
+
+        Assert.Equal(6, vm.VisibleSongs.Count);
+        Assert.Equal((80d, 170d, 0d), (vm.BpmLow, vm.BpmHigh, vm.KeyIndex));
+        Assert.Null(vm.SelectedMode);
+        Assert.True(vm.ModeChoices.Single(c => c.Label == "Any").IsSelected);
+        Assert.False(vm.HasAdvancedFilter);
+    }
+
+    [AvaloniaFact]
+    public async Task Reset_clears_only_the_tempo_key_and_mode_filters()
+    {
+        using var vm = await StartAsync();
+        vm.SelectedGenre = vm.GenreOptions.Single(o => o.Value == Genre.Rock);
+        vm.KeyIndex = (int)MusicalKey.C + 1;
+        Assert.Empty(vm.VisibleSongs);   // every test song is in A
+
+        vm.ResetAdvancedFiltersCommand.Execute(null);
+
+        Assert.Equal(2, vm.VisibleSongs.Count);
+        Assert.Equal("Any key", vm.KeyText);
+        Assert.False(vm.ResetAdvancedFiltersCommand.CanExecute(null));
+        Assert.True(vm.HasFilter);
+    }
+
+    [AvaloniaFact]
     public async Task Sorting_by_title_ignores_the_and_a()
     {
         using var vm = await StartAsync();

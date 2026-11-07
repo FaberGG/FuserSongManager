@@ -1,11 +1,16 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using FuserSongManager.UI.Controls;
 using FuserSongManager.UI.ViewModels;
 using FuserSongManager.UI.Views;
 
 namespace FuserSongManager.UI.Services;
 
-/// <summary>Dialogs shown as modal windows over the window returned by <paramref name="owner"/>.</summary>
+/// <summary>
+/// Dialogs for the window returned by <paramref name="owner"/>. Messages and settings are shown inside the main window
+/// (its <see cref="DialogHost"/>); only the file pickers, which belong to the operating system, and the messages of
+/// windows without a host (the first-run wizard) open windows of their own.
+/// </summary>
 public sealed class AvaloniaDialogService(Func<Window> owner) : IDialogService
 {
     private static readonly FilePickerFileType SongFiles = new("Songs (.zip, .rar, .7z, .pak)")
@@ -18,11 +23,17 @@ public sealed class AvaloniaDialogService(Func<Window> owner) : IDialogService
         Patterns = ["*.exe", "*.bat", "*.cmd"],
     };
 
+    private DialogHost? Host => (owner() as MainWindow)?.Dialogs;
+
     public Task<bool> ConfirmAsync(string title, string message, string confirmText) =>
-        MessageWindow.Create(title, message, confirmText, cancelText: "Cancel").ShowDialog<bool>(owner());
+        Host is { } host
+            ? host.ShowAsync(MessagePanel.Create(title, message, confirmText, cancelText: "Cancel"))
+            : MessageWindow.Create(title, message, confirmText, cancelText: "Cancel").ShowDialog<bool>(owner());
 
     public Task ShowMessageAsync(string title, string message) =>
-        MessageWindow.Create(title, message, "OK", cancelText: null).ShowDialog<bool>(owner());
+        Host is { } host
+            ? host.ShowAsync(MessagePanel.Create(title, message, "OK", cancelText: null))
+            : MessageWindow.Create(title, message, "OK", cancelText: null).ShowDialog<bool>(owner());
 
     public async Task<IReadOnlyList<string>> PickImportSourcesAsync()
     {
@@ -59,5 +70,6 @@ public sealed class AvaloniaDialogService(Func<Window> owner) : IDialogService
     }
 
     public Task<bool> ShowSettingsAsync(SettingsViewModel settings) =>
-        new SettingsWindow { DataContext = settings }.ShowDialog<bool>(owner());
+        (Host ?? throw new InvalidOperationException("Settings are shown over the main window."))
+            .ShowAsync(new SettingsPanel { DataContext = settings });
 }

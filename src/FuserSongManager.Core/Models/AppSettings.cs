@@ -19,6 +19,9 @@ public sealed record AppSettings
     /// <summary>Starts the preview as soon as a song is selected (toggled with Z in the library).</summary>
     public bool AutoplayPreview { get; init; }
 
+    /// <summary>Shows each tile's key and BPM above its title (toggled with D in the library).</summary>
+    public bool ShowTileDetails { get; init; } = true;
+
     /// <summary>What the song does while the riser comes in.</summary>
     public RiserEffect RiserEffect { get; init; } = RiserEffect.LowPassFilter;
 }

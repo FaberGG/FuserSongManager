@@ -10,6 +10,8 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using FuserSongManager.Core.Services;
 using FuserSongManager.Core.Models;
+using FuserSongManager.UI.Controls;
+using FuserSongManager.UI.Services;
 using FuserSongManager.UI.ViewModels;
 using FuserSongManager.UI.Views;
 using static FuserSongManager.UI.Tests.TestLibrary;
@@ -89,6 +91,19 @@ public sealed class WindowTests : IDisposable
         Assert.True(viewModel.IsAutoplayOn);
         window.KeyPressQwerty(PhysicalKey.Z, RawInputModifiers.None);
         Assert.False(viewModel.IsAutoplayOn);
+
+        // D shows or hides the key and BPM over each title; the bottom bar shows the shortcut.
+        var detail = () => Tile(window, "brightside_P").GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "A Minor · 148 BPM");
+        Assert.True(detail().IsVisible);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Key & BPM: ");
+        window.KeyPressQwerty(PhysicalKey.D, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(viewModel.ShowTileDetails);
+        Assert.False(detail().IsVisible);
+        Save(window, "main-window-details-off");
+        window.KeyPressQwerty(PhysicalKey.D, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(detail().IsVisible);
 
         window.KeyPressQwerty(PhysicalKey.A, RawInputModifiers.Control);
         Dispatcher.UIThread.RunJobs();
@@ -199,9 +214,209 @@ public sealed class WindowTests : IDisposable
         Assert.NotEmpty(items);
         // The options use the app's template (with the sweep), and the chosen one is magenta like the game's.
         Assert.All(items, item => Assert.Single(item.GetVisualDescendants().OfType<Controls.SweepFill>()));
+        Assert.All(items, item => Assert.True(item.GetVisualDescendants().OfType<Controls.SweepFill>().Single().ShiftsColour));
         Assert.Same(Application.Current!.FindResource("Fsm.Selected"), items.Single(i => i.IsSelected).Background);
         Save(window, "main-window-sort-open");
         window.Close();
+    }
+
+    /// <summary>The tempo, key and mode panel next to the search, driven with the mouse and the keyboard.</summary>
+    [AvaloniaFact]
+    public async Task Filter_panel_opens_from_the_search_and_filters_by_tempo_key_and_mode()
+    {
+        _library.AddPak(SongLocation.Enabled, "brightside_P", Meta("Mr. Brightside", "The Killers", Genre.Rock, 2003, 148));
+        _library.AddPak(SongLocation.Enabled, "africa_P", Meta("Africa", "Toto", Genre.Pop, 1982, 93) with { Key = MusicalKey.B, Mode = SongMode.Major });
+        _library.AddPak(SongLocation.Enabled, "around_P", Meta("Around the World", "Daft Punk", Genre.Dance, 1997, 121));
+        var viewModel = _library.CreateMainViewModel();
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        await WaitUntil(() => viewModel.Rows.Count == 3 && !viewModel.IsBusy);
+        viewModel.Click(Row(viewModel, "brightside_P"));
+        Dispatcher.UIThread.RunJobs();
+
+        var button = window.FindControl<Button>("FilterButton")!;
+
+        // Hovering the button shows the summary at once; leaving it hides it at once.
+        var center = button.TranslatePoint(new Point(22, 22), window)!.Value;
+        window.MouseMove(center);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(ToolTip.GetIsOpen(button));
+        Save(window, "filters-summary");
+        window.MouseMove(new Point(5, 400));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(ToolTip.GetIsOpen(button));
+
+        button.Flyout!.ShowAt(button);
+        Dispatcher.UIThread.RunJobs();
+        var sliders = button.Flyout is Flyout { Content: Control content }
+            ? content.GetVisualDescendants().OfType<Controls.GameSlider>().ToList() : [];
+        Assert.Equal(2, sliders.Count);
+        var (tempo, key) = (sliders[0], sliders[1]);
+        Assert.Equal((93d, 148d), (tempo.Minimum, tempo.Maximum));
+        var popup = TopLevel.GetTopLevel(tempo)!;
+        SavePopup(popup, "filters-open");
+
+        // Hovering the X must not turn it white on its white disc.
+        var close = ((Flyout)button.Flyout).Content is Control card ? card.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("close")) : null;
+        Assert.NotNull(close);
+        popup.MouseMove(close.TranslatePoint(new Point(24, 24), popup)!.Value);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(close.IsPointerOver);
+        var icon = close.GetVisualDescendants().OfType<PathIcon>().Single();
+        Assert.Equal(Color.Parse("#1A1238"), ((ISolidColorBrush)icon.Foreground!).Color);
+        SavePopup(popup, "filters-close-hover");
+        popup.MouseMove(new Point(5, 5));
+
+        // Drag the lower tempo thumb to the middle: the slower song goes once the slider rests.
+        var y = tempo.Bounds.Height / 2;
+        popup.MouseDown(tempo.TranslatePoint(new Point(14, y), popup)!.Value, MouseButton.Left);
+        popup.MouseMove(tempo.TranslatePoint(new Point(tempo.Bounds.Width / 2, y), popup)!.Value);
+        popup.MouseUp(tempo.TranslatePoint(new Point(tempo.Bounds.Width / 2, y), popup)!.Value, MouseButton.Left);
+        Assert.InRange(viewModel.BpmLow, 115, 126);
+        await Task.Delay(MainViewModel.SearchDelay * 3);
+        Assert.DoesNotContain(viewModel.VisibleSongs, r => r.FileName == "africa_P");
+        Assert.Contains("on", button.Classes);
+
+        // The arrows move the focused slider, not the selection in the grid behind the panel.
+        popup.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("brightside_P", viewModel.Detail?.FileName);
+
+        // Hovering shows the value under the pointer, as in the game.
+        popup.MouseMove(tempo.TranslatePoint(new Point(tempo.Bounds.Width * 0.8, y), popup)!.Value);
+        await Task.Delay(300);   // the row's colour
+        SavePopup(popup, "filters-tempo-hover");
+
+        // The slider takes clicks a little above and below its track, not only on the thin line.
+        var nearMiss = key.TranslatePoint(new Point(key.Bounds.Width - 14, key.Bounds.Height / 2 - 16), popup)!.Value;
+        popup.MouseDown(nearMiss, MouseButton.Left);
+        popup.MouseUp(nearMiss, MouseButton.Left);
+        Assert.Equal("B", viewModel.KeyText);
+        viewModel.KeyIndex = 0;
+
+        key.Focus();
+        popup.KeyPressQwerty(PhysicalKey.End, RawInputModifiers.None);
+        Assert.Equal("B", viewModel.KeyText);
+        Assert.Empty(viewModel.VisibleSongs);   // the only song in B is too slow
+        viewModel.ResetAdvancedFiltersCommand.Execute(null);
+        key.Focus();
+        popup.KeyPressQwerty(PhysicalKey.End, RawInputModifiers.None);
+        viewModel.ModeChoices.Single(c => c.Label == "Major").SelectCommand.Execute(null);
+        Assert.Equal(["Africa"], viewModel.VisibleSongs.Select(r => r.Title));
+        Dispatcher.UIThread.RunJobs();
+        SavePopup(popup, "filters-key-mode");
+
+        button.Flyout.Hide();
+        Dispatcher.UIThread.RunJobs();
+        Save(window, "filters-applied");
+        window.Close();
+    }
+
+    /// <summary>Settings and messages open over the main window, in its dialog layer, and block what is under them.</summary>
+    [AvaloniaFact]
+    public async Task Dialogs_open_inside_the_main_window_and_block_the_library()
+    {
+        _library.AddPak(SongLocation.Enabled, "brightside_P", Meta("Mr. Brightside", "The Killers", Genre.Rock, 2003, 148));
+        _library.AddPak(SongLocation.Enabled, "africa_P", Meta("Africa", "Toto", Genre.Pop, 1982, 93));
+        var viewModel = _library.CreateMainViewModel();
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        await WaitUntil(() => viewModel.Rows.Count == 2 && !viewModel.IsBusy);
+        viewModel.Click(Row(viewModel, "brightside_P"));
+        Dispatcher.UIThread.RunJobs();
+        var dialogs = new AvaloniaDialogService(() => window);
+        var host = window.FindControl<DialogHost>("Dialogs")!;
+        Assert.False(host.IsVisible);
+
+        // Settings: a panel in the window, with focus inside it.
+        var settings = new SettingsViewModel(new AppSettings { FuserDirectory = _library.FuserDirectory, LauncherType = LauncherType.Steam }, _library.Dialogs);
+        var pending = dialogs.ShowSettingsAsync(settings);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(host.IsOpen);
+        Assert.True(host.IsVisible);
+        var panel = window.GetVisualDescendants().OfType<SettingsPanel>().Single();
+        Assert.True(panel.GetVisualDescendants().OfType<ModalPanel>().Single().ShowClose);
+        Assert.True(IsInside(window.FocusManager!.GetFocusedElement(), host));
+        Save(window, "settings-panel");
+
+        // The shortcuts of the library do nothing while it is open: Ctrl+A would select both songs, Esc closes the dialog
+        // instead of clearing the selection.
+        window.KeyPressQwerty(PhysicalKey.A, RawInputModifiers.Control);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(viewModel.Selection);
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(await pending);
+        Assert.False(host.IsVisible);
+        Assert.Single(viewModel.Selection);
+
+        // Saving closes with true.
+        pending = dialogs.ShowSettingsAsync(settings);
+        Dispatcher.UIThread.RunJobs();
+        Click(window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "SaveButton"));
+        Assert.True(await pending);
+        Assert.False(host.IsOpen);
+
+        // The X is the same as Cancel.
+        pending = dialogs.ShowSettingsAsync(settings);
+        Dispatcher.UIThread.RunJobs();
+        Click(window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("close")));
+        Assert.False(await pending);
+
+        // A confirmation over a message: the second is on top and the first comes back when it closes.
+        var message = dialogs.ShowMessageAsync("Import finished", "Added 3 songs.");
+        var confirm = dialogs.ConfirmAsync("Enable songs", "Enable 2 songs?", "Enable");
+        Dispatcher.UIThread.RunJobs();
+        var shown = window.GetVisualDescendants().OfType<MessagePanel>().Single();
+        Assert.Equal("Enable songs", shown.Card.Title);
+        Assert.False(shown.Card.ShowClose);
+        Save(window, "message-panel");
+        Click(window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ConfirmButton"));
+        Assert.True(await confirm);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Import finished", window.GetVisualDescendants().OfType<MessagePanel>().Single().Card.Title);
+        window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);   // the default button
+        Dispatcher.UIThread.RunJobs();
+        await message;
+        Assert.False(host.IsOpen);
+        Assert.Single(viewModel.Selection);   // Enter did not enable or disable the selected song
+
+        // Closing the window releases whoever waits for a dialog.
+        pending = dialogs.ShowSettingsAsync(settings);
+        window.Close();
+        Assert.False(await pending);
+    }
+
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    private static bool IsInside(object? element, Visual container) =>
+        element is Visual visual && visual.GetSelfAndVisualAncestors().Contains(container);
+
+    [Fact]
+    public void Hover_colour_drifts_through_the_game_colours_and_back()
+    {
+        static string Left(double seconds) => Controls.SweepFill.HoverBrushAt(seconds).GradientStops[0].Color.ToString();
+
+        Assert.Equal("#ff6c55ee", Left(0));      // violet
+        Assert.Equal("#ffc63cc8", Left(2.5));    // magenta
+        Assert.Equal("#ffff5a55", Left(5));      // coral
+        Assert.Equal("#ffff7a52", Left(7.5));    // orange
+        Assert.Equal("#ffff5a55", Left(10));     // and back
+        Assert.Equal("#ff6c55ee", Left(15));
+        Assert.NotEqual(Left(1), Left(1.5));     // in between, it moves
+    }
+
+    private static void SavePopup(TopLevel popup, string name)
+    {
+        Dispatcher.UIThread.RunJobs();
+        var frame = popup.CaptureRenderedFrame();
+        if (frame is not null && Environment.GetEnvironmentVariable("FSM_SCREENSHOTS") is { Length: > 0 } folder)
+        {
+            Directory.CreateDirectory(folder);
+#pragma warning disable CS0618
+            frame.Save(Path.Combine(folder, name + ".png"));
+#pragma warning restore CS0618
+        }
     }
 
     /// <summary>The riser button next to play: the game's round lilac disc, its icon still visible when hovered, and a pulse while it plays.</summary>
@@ -283,7 +498,7 @@ public sealed class WindowTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void First_run_and_settings_windows_render()
+    public void First_run_and_start_failure_windows_render()
     {
         var v1 = new V1Library("songs.sqlite", new AppSettings { FuserDirectory = _library.FuserDirectory },
             [new Song { FileName = "a_P", Rating = 3 }, new Song { FileName = "b_P", Notes = "x" }]);
@@ -291,14 +506,6 @@ public sealed class WindowTests : IDisposable
         firstRun.Show();
         Save(firstRun, "first-run");
         firstRun.Close();
-
-        var settings = new SettingsWindow
-        {
-            DataContext = new SettingsViewModel(new AppSettings { FuserDirectory = _library.Root, LauncherType = LauncherType.Local }, _library.Dialogs),
-        };
-        settings.Show();
-        Save(settings, "settings-invalid");
-        settings.Close();
 
         var message = MessageWindow.Create("Import finished", "Added 3 songs.\n\n1 item was skipped:\n\n• pack.zip › C_P: C_P.pak has no C_P.sig next to it.", "OK", null);
         message.Show();

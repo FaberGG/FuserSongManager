@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:FuserSongManager.UI.Controls"
+             x:Class="FuserSongManager.UI.Views.MessagePanel">
+    <!-- Like the game's dialogs: title on top, the message, coral buttons. No X: Esc cancels. -->
+    <c:ModalPanel x:Name="Card" Width="640" MaxHeight="680" ShowClose="False" TitleAlignment="Center">
+        <ScrollViewer>
+            <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="16" LineHeight="23" Foreground="#ECE6F7" />
+        </ScrollViewer>
+        <c:ModalPanel.Footer>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,4,0,0">
+                <Button x:Name="CancelButton" Classes="coral quiet" MinWidth="160" MinHeight="52" FontSize="17" />
+                <Button x:Name="ConfirmButton" Classes="coral" MinWidth="220" MinHeight="52" IsDefault="True" FontSize="17" />
+            </StackPanel>
+        </c:ModalPanel.Footer>
+    </c:ModalPanel>
+</UserControl>

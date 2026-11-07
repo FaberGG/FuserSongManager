@@ -21,12 +21,96 @@
             <!-- ===== Header: title, search, help, settings, more, Play Fuser ===== -->
             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="20">
                 <TextBlock Classes="h1" Text="Custom Songs" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" x:Name="SearchBox" Classes="search" Width="400" HorizontalAlignment="Left"
-                         Text="{Binding SearchText}" PlaceholderText="Search title, artist, author or notes  (Ctrl+F)">
-                    <TextBox.InnerLeftContent>
-                        <PathIcon Data="{StaticResource Ui.Search}" Width="18" Height="18" Margin="14,0,4,0" Foreground="{StaticResource Fsm.Ink3}" />
-                    </TextBox.InnerLeftContent>
-                </TextBox>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <TextBox x:Name="SearchBox" Classes="search" Width="400"
+                             Text="{Binding SearchText}" PlaceholderText="Search title, artist, author or notes  (Ctrl+F)">
+                        <TextBox.InnerLeftContent>
+                            <PathIcon Data="{StaticResource Ui.Search}" Width="18" Height="18" Margin="14,0,4,0" Foreground="{StaticResource Fsm.Ink3}" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+
+                    <!-- Tempo, key and mode filters, in a panel like the game's tempo and key settings. -->
+                    <Button x:Name="FilterButton" Classes="icon" Classes.on="{Binding HasAdvancedFilter}" VerticalAlignment="Center"
+                            ToolTip.ShowDelay="0" ToolTip.Placement="RightEdgeAlignedTop" ToolTip.HorizontalOffset="10"
+                            AutomationProperties.Name="Tempo, key and mode filters" AutomationProperties.HelpText="{Binding AdvancedFilterSummary}">
+                        <!-- On hover, at once: what is filtered now, like the game's summary next to its settings button. -->
+                        <ToolTip.Tip>
+                            <ToolTip Classes="summary">
+                                <StackPanel Spacing="4" Width="190">
+                                    <TextBlock Classes="big" Text="{Binding KeyAndModeText}" />
+                                    <TextBlock Classes="big" Text="{Binding BpmText}" />
+                                    <LayoutTransformControl LayoutTransform="scale(0.7)" HorizontalAlignment="Center" Margin="0,0,0,4">
+                                        <c:GameSlider Width="170" Height="28" IsRange="True" IsHitTestVisible="False" Focusable="False"
+                                                      Minimum="{Binding BpmMinimum}" Maximum="{Binding BpmMaximum}"
+                                                      LowerValue="{Binding BpmLow, Mode=OneWay}" UpperValue="{Binding BpmHigh, Mode=OneWay}" />
+                                    </LayoutTransformControl>
+                                    <TextBlock Classes="hint" Text="{Binding CountText}" TextAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </ToolTip>
+                        </ToolTip.Tip>
+                        <PathIcon Data="{StaticResource Ui.Filter}" Width="20" Height="20" />
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="filters">
+                                <!-- The card, title and close button are the shared ModalPanel; closing a flyout just hides it. -->
+                                <c:ModalPanel Width="522" CloseRequested="OnCloseFilters">
+                                    <StackPanel Spacing="18">
+                                        <StackPanel>
+                                            <TextBlock Classes="heading" Text="Tempo" />
+                                            <Panel Classes="filterRow">
+                                                <Border><c:SweepFill /></Border>
+                                                <Grid ColumnDefinitions="140,*" Margin="18,0,12,0">
+                                                    <TextBlock Classes="value" Text="{Binding BpmText}" />
+                                                    <c:GameSlider Grid.Column="1" IsRange="True" ValueFormat="{}{0} BPM"
+                                                                  Minimum="{Binding BpmMinimum}" Maximum="{Binding BpmMaximum}"
+                                                                  LowerValue="{Binding BpmLow}" UpperValue="{Binding BpmHigh}"
+                                                                  AutomationProperties.Name="Tempo range" />
+                                                </Grid>
+                                            </Panel>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Classes="heading" Text="Key" />
+                                            <Panel Classes="filterRow">
+                                                <Border><c:SweepFill /></Border>
+                                                <Grid ColumnDefinitions="140,*" Margin="18,0,12,0">
+                                                    <TextBlock Classes="value" Text="{Binding KeyText}" />
+                                                    <c:GameSlider Grid.Column="1" Minimum="0" Maximum="12" ValueLabels="{Binding KeyLabels}"
+                                                                  UpperValue="{Binding KeyIndex}" AutomationProperties.Name="Key" />
+                                                </Grid>
+                                            </Panel>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Classes="heading" Text="Mode" />
+                                            <Panel Classes="filterRow">
+                                                <Border><c:SweepFill /></Border>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="18,0,14,0">
+                                                    <TextBlock Classes="value" Text="{Binding ModeText}" />
+                                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding ModeChoices}" VerticalAlignment="Center">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="6" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:ModeChoiceViewModel">
+                                                                <Button Classes="pill" Classes.selected="{Binding IsSelected}"
+                                                                        Content="{Binding Label}" Command="{Binding SelectCommand}" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Grid>
+                                            </Panel>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="hint" Text="{Binding CountText}" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Classes="link" Content="Reset" Command="{Binding ResetAdvancedFiltersCommand}"
+                                                IsVisible="{Binding HasAdvancedFilter}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </c:ModalPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <TextBlock Classes="warning" Text="{Binding FileActionsHint}" MaxWidth="300" VerticalAlignment="Center" TextAlignment="Right"
                                IsVisible="{Binding FileActionsHint, Converter={x:Static ObjectConverters.IsNotNull}}" />
@@ -146,6 +230,16 @@
                                                         </Border>
 
                                                         <StackPanel VerticalAlignment="Bottom" Margin="8,0,8,10" Spacing="1">
+                                                            <!-- Key and BPM, in the style of the genre and year line; D shows or hides it. -->
+                                                            <TextBlock Text="{Binding KeyAndBpm}" FontSize="14" TextAlignment="Center" Foreground="#DDDDDD"
+                                                                       TextTrimming="CharacterEllipsis">
+                                                                <TextBlock.IsVisible>
+                                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                        <Binding Path="HasKeyAndBpm" />
+                                                                        <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).ShowTileDetails" />
+                                                                    </MultiBinding>
+                                                                </TextBlock.IsVisible>
+                                                            </TextBlock>
                                                             <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="ExtraBold" TextAlignment="Center"
                                                                        TextTrimming="CharacterEllipsis" />
                                                             <TextBlock Text="{Binding Artist}" FontSize="15" FontWeight="Medium" TextAlignment="Center"
@@ -423,6 +517,15 @@
                             <TextBlock Text="Off" VerticalAlignment="Center" IsVisible="{Binding !IsAutoplayOn}" />
                         </StackPanel>
                     </Button>
+                    <Button Classes="key" Command="{Binding ToggleTileDetailsCommand}" Focusable="False"
+                            ToolTip.Tip="Show the key and BPM over each song's title">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Classes="keycap" Classes.on="{Binding ShowTileDetails}"><TextBlock Text="D" /></Border>
+                            <TextBlock Text="Key &amp; BPM: " VerticalAlignment="Center" />
+                            <TextBlock Text="On" VerticalAlignment="Center" IsVisible="{Binding ShowTileDetails}" />
+                            <TextBlock Text="Off" VerticalAlignment="Center" IsVisible="{Binding !ShowTileDetails}" />
+                        </StackPanel>
+                    </Button>
                     <Button Classes="key" Command="{Binding PlayPauseCommand}" Focusable="False">
                         <StackPanel Orientation="Horizontal">
                             <Border Classes="keycap"><TextBlock Text="Space" /></Border>
@@ -455,5 +558,8 @@
                              Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
             </Grid>
         </Grid>
+
+        <!-- Settings, messages and confirmations are shown here, over the window, instead of in windows of their own. -->
+        <c:DialogHost x:Name="Dialogs" />
     </Panel>
 </Window>
