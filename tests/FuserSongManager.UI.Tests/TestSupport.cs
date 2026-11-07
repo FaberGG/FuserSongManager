@@ -53,7 +53,6 @@ public sealed class TestLibrary : IDisposable
     public FakeShell Shell { get; } = new();
     public FakeMedia Media { get; } = new();
     public FakeStemPlayer Player { get; } = new();
-    public FakeStemPlayer RiserPlayer { get; } = new();
 
     public string AddPak(SongLocation location, string fileName, SongMetadata? metadata = null, bool withSig = true, string? subfolder = null)
     {
@@ -77,7 +76,6 @@ public sealed class TestLibrary : IDisposable
             Media = Media,
             ArtCacheDirectory = Path.Combine(Root, "art"),
             CreatePlayer = () => Player,
-            CreateRiserPlayer = () => RiserPlayer,
         };
     }
 
@@ -223,7 +221,32 @@ public sealed class FakeStemPlayer : IStemPlayer
     public void Load(SongAudio audio) => Loaded = audio;
     public void Play() { IsPlaying = true; Plays++; }
     public void Pause() => IsPlaying = false;
-    public void Stop() { IsPlaying = false; Position = TimeSpan.Zero; }
+    public void Stop() { IsPlaying = false; IsRiserActive = false; Position = TimeSpan.Zero; }
+
+    // The riser, as the real player does it: it starts the output if the song was not playing.
+    public SongAudio? Riser { get; private set; }
+    public TimeSpan? RiserBar { get; private set; }
+    public bool SongWasPlayingAtRiser { get; private set; }
+    public bool IsRiserActive { get; private set; }
+    public int RiserStops { get; private set; }
+
+    public Exception? RiserFailure { get; set; }
+
+    public void PlayRiser(SongAudio riser, TimeSpan? bar)
+    {
+        if (RiserFailure is not null)
+            throw RiserFailure;
+        SongWasPlayingAtRiser = IsPlaying;
+        Riser = riser;
+        RiserBar = bar;
+        IsRiserActive = true;
+        IsPlaying = true;
+    }
+
+    public void StopRiser() { IsRiserActive = false; RiserStops++; }
+
+    /// <summary>The riser ended and the song took over.</summary>
+    public void FinishRiser() => IsRiserActive = false;
     public void SetMuted(StemKind stem, bool muted) { if (muted) Muted.Add(stem); else Muted.Remove(stem); }
     public void Dispose() { Disposed = true; IsPlaying = false; }
 

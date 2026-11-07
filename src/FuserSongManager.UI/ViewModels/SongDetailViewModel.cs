@@ -47,8 +47,7 @@ public sealed partial class SongDetailViewModel : ViewModelBase
                 Player = new PlayerViewModel(row.FileName,
                     () => media.ReadAudio(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode),
                     createPlayer, services.Log, row.Song.Instruments, row.Song.Metadata.Bpm,
-                    () => media.ReadRiser(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode),
-                    services.CreateRiserPlayer);
+                    () => media.ReadRiser(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode));
             }
         }
         else

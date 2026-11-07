@@ -21,9 +21,10 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
 - **Song panel** with the album art, genre, year, BPM and key, your rating, the custom song's author and your notes.
 - **Preview** that loops like the game: four phrases of eight bars, with a bar ruler to jump around. Beat, bass, loop and
   lead are four discs; click one to mute that part. Audio is only played, never written to disk.
-- **Riser**: the round button next to play, with the game's riser icon, plays the song's riser once: the transition
-  effect the game uses to go to the next song, which is different for every custom song. Some songs ship it empty;
-  the app says so.
+- **Riser**: the round button next to play, with the game's riser icon, plays the song's riser: the transition effect
+  the game uses to go to the next song, which is different for every custom song. If the song is playing, the riser
+  comes in on the next bar, the song fades out under it over two bars, and the song starts again from its beginning
+  as the riser's four bars end, with no gap. Press it again to cancel. Some songs ship the riser empty; the app says so.
 - **Enable and disable** songs (one or many: Ctrl+click, Shift+click, Ctrl+A). Files are moved between
   `custom_songs` and `disabled_songs`, never while Fuser is running.
 - **Import** from `.zip`, `.rar` and `.7z`, at any folder depth, including "download all" archives that contain each

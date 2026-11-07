@@ -100,6 +100,25 @@ public interface IStemPlayer : IDisposable
     /// <summary>Starts again from the beginning at the end of the song instead of stopping.</summary>
     bool Loop { get; set; }
 
+    /// <summary>
+    /// The riser transition, played by this same player so the hand-over is exact. While the song plays it waits for
+    /// the end of the current bar (<paramref name="bar"/>, or starts at once when unknown), then the riser sounds,
+    /// the song fades out over two bars (half the riser when the bar is unknown) and starts again from its beginning
+    /// as the riser's four bars end (the end of its file when the bar is unknown), with no gap. What the riser file
+    /// has after its four bars rings out under the song for one more bar at most. When the song is not playing the
+    /// riser sounds alone and the song follows it. Moving the playhead or stopping cancels it. Needs a loaded song.
+    /// </summary>
+    void PlayRiser(SongAudio riser, TimeSpan? bar);
+
+    /// <summary>True from <see cref="PlayRiser"/> until the song takes over (or the riser is cancelled).</summary>
+    bool IsRiserActive { get; }
+
+    /// <summary>
+    /// Ends the riser early: before it sounds it is just cancelled and the song goes on; once it sounds, the song
+    /// starts from its beginning right away.
+    /// </summary>
+    void StopRiser();
+
     /// <summary>Raised (on any thread) when playback reaches the end (never while looping) or the audio device stops it.</summary>
     event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 }

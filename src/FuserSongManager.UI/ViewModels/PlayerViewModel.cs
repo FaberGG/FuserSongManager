@@ -68,9 +68,8 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     private bool _syncingPosition;
 
     /// <param name="loadRiser">Reads the song's riser; null for a song whose riser cannot be offered.</param>
-    /// <param name="createRiserPlayer">Creates the riser's own player; <paramref name="createPlayer"/> when null.</param>
     public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log,
-        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null, Func<IStemPlayer>? createRiserPlayer = null)
+        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
@@ -78,19 +77,20 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
         _log = log;
         Bpm = bpm is > 0 ? bpm : null;
         Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, instruments?.For(kind), OnStemToggled)).ToList();
-        Riser = loadRiser is null ? null : new RiserViewModel(fileName, loadRiser, createRiserPlayer ?? createPlayer, log, PausePreview);
+        Riser = loadRiser is null ? null : new RiserViewModel(fileName, loadRiser, log, PrepareForRiserAsync,
+            () => BarSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null, OnRiserStarted);
     }
 
-    /// <summary>The song's riser, which plays on its own; null when there is none to offer.</summary>
+    /// <summary>The song's riser, which the same player plays into the song; null when there is none to offer.</summary>
     public RiserViewModel? Riser { get; }
 
-    /// <summary>Pauses the preview if it is playing, so something else can be heard alone.</summary>
-    private void PausePreview()
+    private async Task<IStemPlayer?> PrepareForRiserAsync() => await EnsureLoadedAsync() ? _player : null;
+
+    /// <summary>The riser is under way: the player is playing (the riser, then the song from its start).</summary>
+    private void OnRiserStarted()
     {
-        if (State != PlayerState.Playing)
-            return;
-        _player!.Pause();
-        State = PlayerState.Paused;
+        _ended = null;
+        State = PlayerState.Playing;
     }
 
     /// <summary>Beats per minute, to count bars; null when the pak does not say.</summary>
@@ -170,6 +170,17 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
                 return;
         }
 
+        if (await EnsureLoadedAsync())
+            StartPlaying();
+    }
+
+    private Task<bool>? _loading;
+
+    /// <summary>Reads the song and prepares the player, once: the play button and the riser both need it.</summary>
+    private Task<bool> EnsureLoadedAsync() => _loading ??= LoadAsync();
+
+    private async Task<bool> LoadAsync()
+    {
         State = PlayerState.Loading;
         Message = null;
         try
@@ -177,7 +188,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             // Opening the pak and decrypting takes a moment; keep the window responsive.
             var audio = await Task.Run(_loadAudio);
             if (_lifetime.IsCancellationRequested)
-                return;
+                return false;
 
             var player = _createPlayer();
             player.Loop = true;
@@ -193,8 +204,9 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             }
             DurationSeconds = player.Duration.TotalSeconds;
             _log.Information("Preview of {FileName}: {Stems}", _fileName, string.Join(", ", audio.Stems.Select(s => $"{s.Kind} ({s.ZoneLabel})")));
-            StartPlaying();
+            State = PlayerState.Paused;   // loaded, at the start: whoever asked starts it
             _ = FollowPlaybackAsync(_lifetime.Token);
+            return true;
         }
         catch (Exception ex)
         {
@@ -205,6 +217,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             State = PlayerState.Unavailable;
             _player?.Dispose();
             _player = null;
+            return false;
         }
     }
 
@@ -222,7 +235,6 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
 
     private void StartPlaying()
     {
-        Riser?.Stop();   // one thing at a time
         _ended = null;
         _player!.Play();
         State = PlayerState.Playing;

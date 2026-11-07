@@ -10,6 +10,7 @@ public enum RiserState
     /// <summary>Ready; the pak is only read the first time the button is pressed.</summary>
     Idle,
     Loading,
+    /// <summary>Asked for, waiting for the end of the bar, or sounding: until the song takes over.</summary>
     Playing,
     /// <summary>The song has no riser (or it could not be played): see <see cref="RiserViewModel.Message"/>.</summary>
     Unavailable,
@@ -17,30 +18,37 @@ public enum RiserState
 
 /// <summary>
 /// The riser of a song: the transition effect the game plays to go from this song to the next, which is different
-/// for every custom song. It plays once, on its own, in the key of the song, through a player of its own, so the
-/// preview's position and muted parts are left as they were. The audio is read on the first press and kept.
+/// for every custom song. Here it goes from the song to itself: the riser comes in on the next bar, the song fades
+/// out under it over two bars, and the song starts again from its beginning the moment the riser ends. The
+/// preview's own player does all of that in one stream (see <see cref="IStemPlayer.PlayRiser"/>), so the
+/// hand-over has no gap. The riser's audio is read on the first press and kept.
 /// </summary>
 public sealed partial class RiserViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
 
     private readonly Func<SongAudio> _loadAudio;
-    private readonly Func<IStemPlayer> _createPlayer;
     private readonly Serilog.ILogger _log;
     private readonly string _fileName;
-    private readonly Action _beforePlay;
+    private readonly Func<Task<IStemPlayer?>> _preparePlayer;
+    private readonly Func<TimeSpan?> _barLength;
+    private readonly Action _started;
     private readonly CancellationTokenSource _lifetime = new();
+    private SongAudio? _audio;
     private IStemPlayer? _player;
-    private volatile PlaybackEndedEventArgs? _ended;
 
-    /// <param name="beforePlay">Called before the riser starts: the preview of the song stops so the riser is heard alone.</param>
-    public RiserViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log, Action beforePlay)
+    /// <param name="preparePlayer">The preview's player with the song loaded (loading it if needed); null when the song cannot be played.</param>
+    /// <param name="barLength">One bar of the song; null when its tempo is not known.</param>
+    /// <param name="started">Called once the riser is under way: the preview is now playing.</param>
+    public RiserViewModel(string fileName, Func<SongAudio> loadAudio, Serilog.ILogger log,
+        Func<Task<IStemPlayer?>> preparePlayer, Func<TimeSpan?> barLength, Action started)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
-        _createPlayer = createPlayer;
         _log = log;
-        _beforePlay = beforePlay;
+        _preparePlayer = preparePlayer;
+        _barLength = barLength;
+        _started = started;
     }
 
     [ObservableProperty]
@@ -58,83 +66,58 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
 
     public string ToolTip =>
         State == RiserState.Unavailable ? Message ?? "This song has no riser"
-        : State == RiserState.Playing ? "Stop the riser"
-        : "Listen to the riser: the effect the game plays to go from this song to the next";
+        : State == RiserState.Playing ? "Cancel the riser: the song goes on, or starts again if the riser is already playing"
+        : "Riser: the transition effect of this song. It comes in on the next bar, the song fades out under it and starts again when it ends";
 
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task Play()
     {
         if (State == RiserState.Playing)
         {
-            Stop();
+            _player?.StopRiser();
+            State = RiserState.Idle;
             return;
         }
 
         Message = null;
-
-        if (_player is null)
-        {
-            State = RiserState.Loading;
-            try
-            {
-                // Opening the pak and decrypting takes a moment; keep the window responsive.
-                var audio = await Task.Run(_loadAudio);
-                if (_lifetime.IsCancellationRequested)
-                    return;
-
-                var player = _createPlayer();
-                player.Loop = false;
-                player.Load(audio);
-                player.PlaybackEnded += (_, e) => _ended = e;
-                _player = player;
-                _log.Information("Riser of {FileName}: {Stems}, {Duration:0.0} s", _fileName,
-                    string.Join(", ", audio.Stems.Select(s => s.Kind)), player.Duration.TotalSeconds);
-            }
-            catch (Exception ex)
-            {
-                _log.Warning(ex, "Riser of {FileName} is not available", _fileName);
-                Message = ex is NotSupportedException or InvalidDataException
-                    ? ex.Message
-                    : $"The riser could not be played: {ex.Message}";
-                State = RiserState.Unavailable;
-                return;
-            }
-        }
-        else
-        {
-            _player.Stop();   // back to the start for another listen
-        }
-
-        _ended = null;
+        State = RiserState.Loading;
         try
         {
-            // Only now: a song without a riser must not interrupt the preview.
-            _beforePlay();
-            _player.Play();
+            // Opening the pak and decrypting takes a moment; keep the window responsive.
+            _audio ??= await Task.Run(_loadAudio);
+            if (_lifetime.IsCancellationRequested)
+                return;
+
+            // The song is loaded here when it was not playing yet: the riser leads into it.
+            var player = await _preparePlayer();
+            if (player is null || _lifetime.IsCancellationRequested)
+            {
+                State = RiserState.Idle;   // the preview already says why the song cannot be played
+                return;
+            }
+
+            player.PlayRiser(_audio, _barLength());
+            _player = player;
+            _log.Information("Riser of {FileName}: {Stems}", _fileName, string.Join(", ", _audio.Stems.Select(s => s.Kind)));
         }
         catch (Exception ex)
         {
-            _log.Warning(ex, "Riser of {FileName} could not be played", _fileName);
-            Message = $"The riser could not be played: {ex.Message}";
-            State = RiserState.Idle;
+            _log.Warning(ex, "Riser of {FileName} is not available", _fileName);
+            Message = ex is NotSupportedException or InvalidDataException
+                ? ex.Message
+                : $"The riser could not be played: {ex.Message}";
+            State = RiserState.Unavailable;
             return;
         }
+
         State = RiserState.Playing;
+        _started();
         _ = FollowPlaybackAsync(_lifetime.Token);
     }
 
     private bool CanPlay() => State is RiserState.Idle or RiserState.Playing;
 
-    /// <summary>Stops the riser if it is playing (the song's preview starting, or another press of the button).</summary>
-    public void Stop()
-    {
-        if (State != RiserState.Playing)
-            return;
-        _player?.Stop();
-        State = RiserState.Idle;
-    }
-
-    /// <summary>Notices when the riser ends (the player reports it on its own thread).</summary>
+    /// <summary>Notices when the song has taken over, or the riser was cancelled by stopping or moving the playhead.</summary>
     private async Task FollowPlaybackAsync(CancellationToken ct)
     {
         using var timer = new PeriodicTimer(PollInterval);
@@ -142,15 +125,8 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
         {
             while (State == RiserState.Playing && await timer.WaitForNextTickAsync(ct))
             {
-                if (_ended is not { } ended)
+                if (_player is { IsRiserActive: true })
                     continue;
-                _ended = null;
-                if (ended.Error is not null)
-                {
-                    _log.Warning(ended.Error, "Audio device stopped the riser of {FileName}", _fileName);
-                    Message = $"The audio device stopped: {ended.Error.Message}";
-                }
-                _player?.Stop();
                 State = RiserState.Idle;
             }
         }
@@ -162,7 +138,6 @@ public sealed partial class RiserViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _lifetime.Cancel();
-        _player?.Dispose();
-        _player = null;
+        _player = null;   // the preview owns it
     }
 }
