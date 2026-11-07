@@ -70,6 +70,13 @@ public interface ISongMediaReader
     /// Throws <see cref="NotSupportedException"/> or <see cref="InvalidDataException"/> with a clear message when the audio cannot be read.
     /// </summary>
     SongAudio ReadAudio(string pakPath, SongMode? mode);
+
+    /// <summary>
+    /// The riser of the song: the transition effect the game plays to go from this song to the next, made of one
+    /// short clip per part. Same shape as <see cref="ReadAudio"/>. Throws <see cref="InvalidDataException"/> when
+    /// the pak has no riser or all of its clips are empty.
+    /// </summary>
+    SongAudio ReadRiser(string pakPath, SongMode? mode);
 }
 
 /// <summary>Plays the parts of one song together, each of which can be muted (RF-PEN-13).</summary>
@@ -90,8 +97,36 @@ public interface IStemPlayer : IDisposable
 
     void SetMuted(StemKind stem, bool muted);
 
+    /// <summary>
+    /// Whether the part is muted now. It changes by itself when the riser hands over to the song, which starts again
+    /// with every part on.
+    /// </summary>
+    bool IsMuted(StemKind stem);
+
     /// <summary>Starts again from the beginning at the end of the song instead of stopping.</summary>
     bool Loop { get; set; }
+
+    /// <summary>
+    /// The riser transition, played by this same player so the hand-over is exact. While the song plays it waits for
+    /// the end of the current bar (<paramref name="bar"/>, or starts at once when unknown), then the riser sounds,
+    /// the song fades out over two bars (half the riser when the bar is unknown) and starts again from its beginning
+    /// as the riser's four bars end (the end of its file when the bar is unknown), with no gap and with every part on,
+    /// including those the user had muted. What the riser file
+    /// has after its four bars rings out under the song for one more bar at most. When the song is not playing the
+    /// riser sounds alone and the song follows it. Moving the playhead or stopping cancels it. Needs a loaded song.
+    /// <paramref name="effect"/> is what the song does while the riser comes in (instead of the plain fade); it
+    /// needs the bar, so without it the song just fades.
+    /// </summary>
+    void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect);
+
+    /// <summary>True from <see cref="PlayRiser"/> until the song takes over (or the riser is cancelled).</summary>
+    bool IsRiserActive { get; }
+
+    /// <summary>
+    /// Ends the riser early: before it sounds it is just cancelled and the song goes on; once it sounds, the song
+    /// starts from its beginning right away.
+    /// </summary>
+    void StopRiser();
 
     /// <summary>Raised (on any thread) when playback reaches the end (never while looping) or the audio device stops it.</summary>
     event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;

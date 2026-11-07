@@ -15,6 +15,7 @@ using FuserSongManager.UI.Services;
 using FuserSongManager.UI.ViewModels;
 using FuserSongManager.UI.Views;
 using static FuserSongManager.UI.Tests.TestLibrary;
+using GlyphPath = Avalonia.Controls.Shapes.Path;
 
 namespace FuserSongManager.UI.Tests;
 
@@ -416,6 +417,54 @@ public sealed class WindowTests : IDisposable
             frame.Save(Path.Combine(folder, name + ".png"));
 #pragma warning restore CS0618
         }
+    }
+
+    /// <summary>The riser button next to play: the game's round lilac disc, its icon still visible when hovered, and a pulse while it plays.</summary>
+    [AvaloniaFact]
+    public async Task Riser_button_sits_next_to_play_and_shows_its_icon_idle_hovered_and_playing()
+    {
+        _library.AddPak(SongLocation.Enabled, "brightside_P", Meta("Mr. Brightside", "The Killers", Genre.Rock, 2003, 148));
+        var viewModel = _library.CreateMainViewModel();
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        await WaitUntil(() => viewModel.Rows.Count == 1 && !viewModel.IsBusy);
+        viewModel.Click(Row(viewModel, "brightside_P"));
+        Dispatcher.UIThread.RunJobs();
+
+        var button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("riser"));
+        var play = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("play"));
+        Assert.True(button.IsVisible);
+        Assert.True(button.TranslatePoint(new Point(), window)!.Value.X > play.TranslatePoint(new Point(), window)!.Value.X);
+        Assert.Equal(play.TranslatePoint(new Point(0, 28), window)!.Value.Y, button.TranslatePoint(new Point(0, 24), window)!.Value.Y, 1);   // same row, centred
+        Save(window, "riser-idle");
+
+        // The icon is centred in the disc: exactly in height, and in width shifted a little to the right, because the
+        // three nodes on its left weigh more than the arrow.
+        var glyph = button.GetVisualDescendants().OfType<GlyphPath>().Single();
+        var glyphCentre = glyph.TranslatePoint(new Point(glyph.Bounds.Width / 2, glyph.Bounds.Height / 2), window)!.Value;
+        var discCentre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        Assert.Equal(discCentre.Y, glyphCentre.Y, 0.5);
+        Assert.InRange(glyphCentre.X - discCentre.X, 0.5, 2.5);
+
+        window.MouseMove(button.TranslatePoint(new Point(24, 24), window)!.Value);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(button.IsPointerOver);
+        var icon = button.GetVisualDescendants().OfType<GlyphPath>().Single();
+        Assert.Equal(Color.Parse("#1A1238"), ((ISolidColorBrush)icon.Fill!).Color);   // dark on the light disc
+        Save(window, "riser-hover");
+
+        await viewModel.Detail!.Player!.Riser!.PlayCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("playing", button.Classes);
+        Save(window, "riser-playing");
+
+        // The effect selector, with the names DJs use.
+        var effects = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.ItemsSource == viewModel.Detail.Player.Riser!.Effects);
+        Assert.Equal("Low Pass Filter", ((Option<RiserEffect>)effects.SelectedItem!).Label);
+        effects.IsDropDownOpen = true;
+        Dispatcher.UIThread.RunJobs();
+        Save(window, "riser-effects-open");
+        window.Close();
     }
 
     [AvaloniaFact]

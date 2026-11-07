@@ -5,7 +5,7 @@ public sealed record AppSettings
     /// <summary>Fuser install folder (the one containing <c>Fuser.exe</c>).</summary>
     public string? FuserDirectory { get; init; }
 
-    /// <summary>Overrides the default <c>Content/Paks/disabled_songs</c> folder.</summary>
+    /// <summary>Overrides the default <c>Content/disabled_songs</c> folder (kept outside Paks, which Fuser loads entirely).</summary>
     public string? DisabledSongsDirectory { get; init; }
 
     public LauncherType LauncherType { get; init; } = LauncherType.Steam;
@@ -21,6 +21,9 @@ public sealed record AppSettings
 
     /// <summary>Shows each tile's key and BPM above its title (toggled with D in the library).</summary>
     public bool ShowTileDetails { get; init; } = true;
+
+    /// <summary>What the song does while the riser comes in.</summary>
+    public RiserEffect RiserEffect { get; init; } = RiserEffect.LowPassFilter;
 }
 
 /// <summary>Folders derived from the Fuser install folder.</summary>
@@ -34,7 +37,7 @@ public sealed record LibraryPaths(string PaksDirectory, string EnabledDirectory,
         return new LibraryPaths(
             paks,
             Path.Combine(paks, "custom_songs"),
-            string.IsNullOrWhiteSpace(disabledOverride) ? Path.Combine(paks, "disabled_songs") : disabledOverride);
+            string.IsNullOrWhiteSpace(disabledOverride) ? Path.Combine(fuserDirectory, "Fuser", "Content", "disabled_songs") : disabledOverride);
     }
 
     public static LibraryPaths FromSettings(AppSettings settings) =>

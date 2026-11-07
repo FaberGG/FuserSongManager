@@ -174,6 +174,8 @@ public sealed class FakeMedia : ISongMediaReader
     public HashSet<StemKind> Stems { get; } = [.. Enum.GetValues<StemKind>()];
     public Exception? AudioError { get; set; }
     public List<(string Pak, SongMode? Mode)> AudioReads { get; } = [];
+    public Exception? RiserError { get; set; }
+    public List<(string Pak, SongMode? Mode)> RiserReads { get; } = [];
 
     public byte[]? ReadAlbumArt(string pakPath) => Art.GetValueOrDefault(Path.GetFileNameWithoutExtension(pakPath));
 
@@ -183,6 +185,14 @@ public sealed class FakeMedia : ISongMediaReader
         if (AudioError is not null)
             throw AudioError;
         return new SongAudio(Path.GetFileNameWithoutExtension(pakPath), Stems.Order().Select(k => new SongStem(k, mode?.ToString() ?? "", [1])).ToList());
+    }
+
+    public SongAudio ReadRiser(string pakPath, SongMode? mode)
+    {
+        RiserReads.Add((pakPath, mode));
+        if (RiserError is not null)
+            throw RiserError;
+        return new SongAudio(Path.GetFileNameWithoutExtension(pakPath), Stems.Order().Select(k => new SongStem(k, "riser", [2])).ToList());
     }
 
     /// <summary>A solid-colour PNG, as the real reader returns.</summary>
@@ -211,8 +221,40 @@ public sealed class FakeStemPlayer : IStemPlayer
     public void Load(SongAudio audio) => Loaded = audio;
     public void Play() { IsPlaying = true; Plays++; }
     public void Pause() => IsPlaying = false;
-    public void Stop() { IsPlaying = false; Position = TimeSpan.Zero; }
+    public void Stop() { IsPlaying = false; IsRiserActive = false; Position = TimeSpan.Zero; }
+
+    // The riser, as the real player does it: it starts the output if the song was not playing.
+    public SongAudio? Riser { get; private set; }
+    public TimeSpan? RiserBar { get; private set; }
+    public bool SongWasPlayingAtRiser { get; private set; }
+    public bool IsRiserActive { get; private set; }
+    public int RiserStops { get; private set; }
+
+    public Exception? RiserFailure { get; set; }
+    public RiserEffect? RiserEffectUsed { get; private set; }
+
+    public void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect)
+    {
+        if (RiserFailure is not null)
+            throw RiserFailure;
+        RiserEffectUsed = effect;
+        SongWasPlayingAtRiser = IsPlaying;
+        Riser = riser;
+        RiserBar = bar;
+        IsRiserActive = true;
+        IsPlaying = true;
+    }
+
+    public void StopRiser() { IsRiserActive = false; RiserStops++; }
+
+    /// <summary>The riser ended and the song took over: it starts again with every part on, as the real player does.</summary>
+    public void FinishRiser()
+    {
+        IsRiserActive = false;
+        Muted.Clear();
+    }
     public void SetMuted(StemKind stem, bool muted) { if (muted) Muted.Add(stem); else Muted.Remove(stem); }
+    public bool IsMuted(StemKind stem) => Muted.Contains(stem);
     public void Dispose() { Disposed = true; IsPlaying = false; }
 
     public void End(Exception? error = null) { IsPlaying = false; PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error)); }

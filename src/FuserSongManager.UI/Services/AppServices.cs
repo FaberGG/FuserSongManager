@@ -85,6 +85,28 @@ public sealed class AppServices
         {
             Directory.CreateDirectory(paths.EnabledDirectory);
             Directory.CreateDirectory(paths.DisabledDirectory);
+            MigrateLegacyDisabledFolder();
+        }
+    }
+
+    /// <summary>
+    /// Moves songs left in the old <c>Paks\disabled_songs</c> (which Fuser still loads) to the current disabled folder.
+    /// Skipped while the game runs. Never throws: a failure is logged and retried on the next start.
+    /// </summary>
+    public void MigrateLegacyDisabledFolder()
+    {
+        if (Paths is not { } paths || Game.IsGameRunning())
+            return;
+
+        try
+        {
+            var moved = LegacyDisabledFolderMigration.Run(paths);
+            if (moved > 0)
+                Log.Information("Moved {Count} disabled songs out of Paks to {Folder}", moved, paths.DisabledDirectory);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not move the legacy disabled_songs folder out of Paks");
         }
     }
 

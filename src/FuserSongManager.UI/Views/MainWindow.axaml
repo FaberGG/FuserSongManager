@@ -345,7 +345,7 @@
                                                 <ContentControl.ContentTemplate>
                                                     <DataTemplate x:DataType="vm:PlayerViewModel">
                                                         <StackPanel Spacing="12">
-                                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
                                                                 <Button Classes="play" Command="{Binding PlayPauseCommand}"
                                                                         ToolTip.Tip="Listen to the song in a loop, as it plays in the game (Space)"
                                                                         AutomationProperties.Name="{Binding PlayPauseText}">
@@ -360,6 +360,25 @@
                                                                     <TextBlock Text="{Binding TimeText}" FontSize="16" FontWeight="Bold" FontFeatures="tnum" />
                                                                     <TextBlock Classes="hint" Text="{Binding BarText}" FontSize="13" FontFeatures="tnum" />
                                                                 </StackPanel>
+                                                                <!-- The riser: the transition effect the game plays to go to the next song, different for each song. -->
+                                                                <Button Grid.Column="2" Classes="riser" Classes.playing="{Binding Riser.IsPlaying}"
+                                                                        Command="{Binding Riser.PlayCommand}" ToolTip.Tip="{Binding Riser.ToolTip}"
+                                                                        IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                                        AutomationProperties.Name="{Binding Riser.ToolTip}">
+                                                                    <!-- Only the width is set: the drawing keeps its proportions (28x25) and the button centres it. A fixed 28x28 box would
+                                                                         put it at the top of the box, 1.5 px too high. The three nodes on the left weigh more than the arrow, so
+                                                                         it also sits 1.5 px to the right to look centred, not just to be. -->
+                                                                    <Path Data="{StaticResource Ui.Riser}" Fill="{Binding $parent[Button].Foreground}" Width="28" Stretch="Uniform" Margin="3,0,0,0" />
+                                                                </Button>
+                                                            </Grid>
+                                                            <!-- What the song does while the riser comes in: the moves DJs use to go from one track to the next. -->
+                                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                                                  IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                                <TextBlock Classes="label" Text="RISER EFFECT" VerticalAlignment="Center" />
+                                                                <ComboBox Grid.Column="1" ItemsSource="{Binding Riser.Effects}" SelectedItem="{Binding Riser.SelectedEffect}"
+                                                                          HorizontalAlignment="Stretch" MinHeight="40" FontSize="15"
+                                                                          AutomationProperties.Name="Riser effect"
+                                                                          ToolTip.Tip="What the song does while the riser comes in" />
                                                             </Grid>
                                                             <c:LoopTimeline Height="30" Position="{Binding PositionSeconds}" Duration="{Binding DurationSeconds}"
                                                                             BarCount="{Binding BarCount}" CanSeek="{Binding CanSeek}"
@@ -414,6 +433,8 @@
                                                             </ItemsControl>
                                                             <TextBlock Classes="warning" Text="{Binding Message}"
                                                                        IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                            <TextBlock Classes="warning" Text="{Binding Riser.Message}"
+                                                                       IsVisible="{Binding Riser.Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ContentControl.ContentTemplate>
