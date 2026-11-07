@@ -46,7 +46,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
         var paths = LibraryPaths.FromFuserDirectory(@"C:\Games\Fuser");
 
         Assert.Equal(@"C:\Games\Fuser\Fuser\Content\Paks\custom_songs", paths.EnabledDirectory);
-        Assert.Equal(@"C:\Games\Fuser\Fuser\Content\Paks\disabled_songs", paths.DisabledDirectory);
+        Assert.Equal(@"C:\Games\Fuser\Fuser\Content\disabled_songs", paths.DisabledDirectory);
         Assert.Equal(@"D:\off", LibraryPaths.FromFuserDirectory(@"C:\Games\Fuser", @"D:\off").DisabledDirectory);
     }
 }

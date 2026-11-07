@@ -471,6 +471,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     public async Task InitializeAsync()
     {
         _ = PollGameAsync(_lifetime.Token);
+        await Task.Run(_services.MigrateLegacyDisabledFolder);
         await ReloadAsync();
         // Measured from process start, to track acceptance criterion 3 (list visible in under 1 s).
         Log.Information("Library shown: {Count} songs, {Elapsed:0} ms after start",
