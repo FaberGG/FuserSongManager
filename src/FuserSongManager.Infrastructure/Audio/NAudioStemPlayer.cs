@@ -5,10 +5,20 @@ using NVorbis;
 
 namespace FuserSongManager.Infrastructure.Audio;
 
-/// <summary>Ogg Vorbis part decoded on the fly with NVorbis (nothing is written to disk).</summary>
+/// <summary>
+/// Ogg Vorbis part decoded on the fly with NVorbis (nothing is written to disk).
+/// <para>
+/// Going back to the start is exact; going anywhere else is not. NVorbis lands a few hundred to a couple of
+/// thousand frames (11 to 44 ms) off the frame asked for in these Oggs, and by a different amount in each part.
+/// That is fine for dragging the playhead, but not for restarting the song, where it would put the parts out of
+/// step with each other: the start is therefore reached by opening the stream again, which is exact.
+/// </para>
+/// </summary>
 public sealed class VorbisStemSource(byte[] ogg) : IStemSource
 {
-    private readonly VorbisReader _reader = new(new MemoryStream(ogg, writable: false), closeOnDispose: true);
+    private VorbisReader _reader = Open(ogg);
+
+    private static VorbisReader Open(byte[] ogg) => new(new MemoryStream(ogg, writable: false), closeOnDispose: true);
 
     public int SampleRate => _reader.SampleRate;
     public int Channels => _reader.Channels;
@@ -22,6 +32,14 @@ public sealed class VorbisStemSource(byte[] ogg) : IStemSource
 
     private void Seek(long frame)
     {
+        if (frame == 0)
+        {
+            // Decoding from the beginning is the only exact way to be at the beginning.
+            _reader.Dispose();
+            _reader = Open(ogg);
+            return;
+        }
+
         try
         {
             _reader.SamplePosition = frame;
@@ -63,8 +81,12 @@ public sealed class VorbisStemSource(byte[] ogg) : IStemSource
 /// <summary>Plays a song's parts through the default Windows audio device (WinMM via NAudio).</summary>
 public sealed class NAudioStemPlayer : IStemPlayer
 {
+    /// <summary>A riser is four bars long: what its file has after that is a tail.</summary>
+    private const int RiserBars = 4;
+
     private readonly Lock _gate = new();
     private StemMixer? _mixer;
+    private TransitionMixer? _transition;   // the song's mixer with the riser on top; what the sound card reads
     private WaveOutEvent? _output;
     // Set when the mixer runs out of audio. WaveOut raises PlaybackStopped asynchronously for both the end of
     // the song and an explicit Stop, so this is what tells them apart.
@@ -84,8 +106,10 @@ public sealed class NAudioStemPlayer : IStemPlayer
             ReleaseOutput();
             lock (_gate)
             {
+                _transition?.Dispose();
                 _mixer?.Dispose();
                 _mixer = mixer;
+                _transition = new TransitionMixer(mixer);
             }
         }
         catch
@@ -106,7 +130,14 @@ public sealed class NAudioStemPlayer : IStemPlayer
     public TimeSpan Position
     {
         get { lock (_gate) return _mixer is null ? TimeSpan.Zero : TimeSpan.FromSeconds((double)_mixer.PositionFrames / _mixer.SampleRate); }
-        set { lock (_gate) _mixer?.Seek((long)(value.TotalSeconds * (_mixer?.SampleRate ?? 0))); }
+        set
+        {
+            lock (_gate)
+            {
+                _transition?.Cancel();   // a riser would otherwise carry on over the new place
+                _mixer?.Seek((long)(value.TotalSeconds * (_mixer?.SampleRate ?? 0)));
+            }
+        }
     }
 
     public void Play()
@@ -130,6 +161,70 @@ public sealed class NAudioStemPlayer : IStemPlayer
 
     public void Pause() => _output?.Pause();
 
+    public bool IsRiserActive
+    {
+        get { lock (_gate) return _transition?.IsRiserActive ?? false; }
+    }
+
+    public void PlayRiser(SongAudio riser, TimeSpan? bar, RiserEffect effect)
+    {
+        if (_mixer is null)
+            throw new InvalidOperationException("Nothing is loaded.");
+        var rate = _mixer.SampleRate;
+
+        var sources = new List<(StemKind, IStemSource)>();
+        StemMixer riserMixer;
+        try
+        {
+            foreach (var stem in riser.Stems)
+            {
+                IStemSource source = new VorbisStemSource(stem.OggData);
+                // A few songs have a riser at another rate than the song: everything shares the output's.
+                if (source.SampleRate != rate)
+                    source = new ResampledStemSource(source, rate);
+                sources.Add((stem.Kind, source));
+            }
+            riserMixer = new StemMixer(sources);
+        }
+        catch
+        {
+            foreach (var (_, source) in sources)
+                source.Dispose();
+            throw;
+        }
+
+        var playing = IsPlaying;
+        lock (_gate)
+        {
+            // Without a tempo there is no bar line: it starts at once, fades the song over half of it and the song
+            // returns when the file ends.
+            var plan = new RiserPlan(0, riserMixer.LengthFrames / 2, riserMixer.LengthFrames, 0, playing);
+            if (bar is { } length && length > TimeSpan.Zero)
+            {
+                var barFrames = Math.Max(1, (long)Math.Round(length.TotalSeconds * rate));
+                var wait = 0L;
+                if (playing)
+                {
+                    // The riser comes in on the next bar line.
+                    var position = _mixer.PositionFrames;
+                    wait = Math.Min((position + barFrames - 1) / barFrames * barFrames, _mixer.LengthFrames) - position;
+                }
+                // The song fades over two bars and starts again after the riser's four. The riser file often goes on
+                // past them with a silent or dying tail: it rings out for one more bar at most.
+                plan = new RiserPlan(wait, 2 * barFrames, RiserBars * barFrames, barFrames, playing, RiserEffects.Create(effect, rate, barFrames));
+            }
+            _transition!.StartRiser(riserMixer, plan);
+        }
+
+        if (!playing)
+            Play();   // the output starts with the riser alone; the song follows it
+    }
+
+    public void StopRiser()
+    {
+        lock (_gate) _transition?.Skip();
+    }
+
     public void Stop()
     {
         _output?.Stop();
@@ -139,6 +234,11 @@ public sealed class NAudioStemPlayer : IStemPlayer
     public void SetMuted(StemKind stem, bool muted)
     {
         lock (_gate) _mixer?.SetMuted(stem, muted);
+    }
+
+    public bool IsMuted(StemKind stem)
+    {
+        lock (_gate) return _mixer?.IsMuted(stem) ?? false;
     }
 
     public bool Loop
@@ -174,6 +274,8 @@ public sealed class NAudioStemPlayer : IStemPlayer
         ReleaseOutput();
         lock (_gate)
         {
+            _transition?.Dispose();
+            _transition = null;
             _mixer?.Dispose();
             _mixer = null;
         }
@@ -189,7 +291,7 @@ public sealed class NAudioStemPlayer : IStemPlayer
         {
             int read;
             lock (player._gate)
-                read = player._mixer?.Read(buffer, offset, count) ?? 0;
+                read = player._transition?.Read(buffer, offset, count) ?? 0;
             if (read == 0)
                 player._reachedEnd = true;
             return read;

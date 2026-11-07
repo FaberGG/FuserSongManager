@@ -67,8 +67,10 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     private volatile PlaybackEndedEventArgs? _ended;
     private bool _syncingPosition;
 
+    /// <param name="loadRiser">Reads the song's riser; null for a song whose riser cannot be offered.</param>
     public PlayerViewModel(string fileName, Func<SongAudio> loadAudio, Func<IStemPlayer> createPlayer, Serilog.ILogger log,
-        SongInstruments? instruments = null, int? bpm = null)
+        SongInstruments? instruments = null, int? bpm = null, Func<SongAudio>? loadRiser = null,
+        RiserEffect riserEffect = RiserEffect.LowPassFilter, Action<RiserEffect>? onRiserEffectChanged = null)
     {
         _fileName = fileName;
         _loadAudio = loadAudio;
@@ -76,6 +78,20 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
         _log = log;
         Bpm = bpm is > 0 ? bpm : null;
         Stems = Enum.GetValues<StemKind>().Select(kind => new StemToggleViewModel(kind, instruments?.For(kind), OnStemToggled)).ToList();
+        Riser = loadRiser is null ? null : new RiserViewModel(fileName, loadRiser, log, PrepareForRiserAsync,
+            () => BarSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null, OnRiserStarted, riserEffect, onRiserEffectChanged);
+    }
+
+    /// <summary>The song's riser, which the same player plays into the song; null when there is none to offer.</summary>
+    public RiserViewModel? Riser { get; }
+
+    private async Task<IStemPlayer?> PrepareForRiserAsync() => await EnsureLoadedAsync() ? _player : null;
+
+    /// <summary>The riser is under way: the player is playing (the riser, then the song from its start).</summary>
+    private void OnRiserStarted()
+    {
+        _ended = null;
+        State = PlayerState.Playing;
     }
 
     /// <summary>Beats per minute, to count bars; null when the pak does not say.</summary>
@@ -155,6 +171,17 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
                 return;
         }
 
+        if (await EnsureLoadedAsync())
+            StartPlaying();
+    }
+
+    private Task<bool>? _loading;
+
+    /// <summary>Reads the song and prepares the player, once: the play button and the riser both need it.</summary>
+    private Task<bool> EnsureLoadedAsync() => _loading ??= LoadAsync();
+
+    private async Task<bool> LoadAsync()
+    {
         State = PlayerState.Loading;
         Message = null;
         try
@@ -162,7 +189,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             // Opening the pak and decrypting takes a moment; keep the window responsive.
             var audio = await Task.Run(_loadAudio);
             if (_lifetime.IsCancellationRequested)
-                return;
+                return false;
 
             var player = _createPlayer();
             player.Loop = true;
@@ -178,8 +205,9 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             }
             DurationSeconds = player.Duration.TotalSeconds;
             _log.Information("Preview of {FileName}: {Stems}", _fileName, string.Join(", ", audio.Stems.Select(s => $"{s.Kind} ({s.ZoneLabel})")));
-            StartPlaying();
+            State = PlayerState.Paused;   // loaded, at the start: whoever asked starts it
             _ = FollowPlaybackAsync(_lifetime.Token);
+            return true;
         }
         catch (Exception ex)
         {
@@ -190,6 +218,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
             State = PlayerState.Unavailable;
             _player?.Dispose();
             _player = null;
+            return false;
         }
     }
 
@@ -238,11 +267,28 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
                     continue;
                 }
                 if (State == PlayerState.Playing)
+                {
                     SetPosition(_player.Position.TotalSeconds);
+                    SyncStemsWithPlayer();
+                }
             }
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    /// <summary>
+    /// The player can turn parts back on by itself (the song starts again after the riser with every part on): the
+    /// discs show what it plays. A disc the user just switched is already switched in the player, so nothing clashes.
+    /// </summary>
+    private void SyncStemsWithPlayer()
+    {
+        foreach (var stem in Stems)
+        {
+            var on = !_player!.IsMuted(stem.Kind);
+            if (stem.IsOn != on)
+                stem.IsOn = on;
         }
     }
 
@@ -256,6 +302,7 @@ public sealed partial class PlayerViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _lifetime.Cancel();
+        Riser?.Dispose();
         _player?.Dispose();
         _player = null;
     }

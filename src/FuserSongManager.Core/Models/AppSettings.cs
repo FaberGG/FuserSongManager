@@ -18,6 +18,9 @@ public sealed record AppSettings
 
     /// <summary>Starts the preview as soon as a song is selected (toggled with Z in the library).</summary>
     public bool AutoplayPreview { get; init; }
+
+    /// <summary>What the song does while the riser comes in.</summary>
+    public RiserEffect RiserEffect { get; init; } = RiserEffect.LowPassFilter;
 }
 
 /// <summary>Folders derived from the Fuser install folder.</summary>

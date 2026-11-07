@@ -46,12 +46,28 @@ public sealed partial class SongDetailViewModel : ViewModelBase
                 // The path is resolved when play is pressed: the song may have been enabled or disabled meanwhile.
                 Player = new PlayerViewModel(row.FileName,
                     () => media.ReadAudio(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode),
-                    createPlayer, services.Log, row.Song.Instruments, row.Song.Metadata.Bpm);
+                    createPlayer, services.Log, row.Song.Instruments, row.Song.Metadata.Bpm,
+                    () => media.ReadRiser(FullPath ?? throw new InvalidOperationException("The song's file is not known; rescan the library."), Song.Metadata.Mode),
+                    services.Settings.RiserEffect, SaveRiserEffect);
             }
         }
         else
         {
             ArtMessage = FullPath is null ? "Rescan the library to see the album art." : null;
+        }
+    }
+
+    private void SaveRiserEffect(RiserEffect effect)
+    {
+        if (_services.Settings.RiserEffect == effect)
+            return;
+        try
+        {
+            _services.SaveSettings(_services.Settings with { RiserEffect = effect });
+        }
+        catch (Exception ex)
+        {
+            _services.Log.Warning(ex, "Could not save the riser effect");
         }
     }
 

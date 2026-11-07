@@ -21,6 +21,8 @@ public sealed class AlbumArtServiceTests : IDisposable
         public int Reads { get; private set; }
         public bool Throw { get; set; }
 
+        public SongAudio ReadRiser(string pakPath, SongMode? mode) => throw new NotSupportedException();
+
         public byte[]? ReadAlbumArt(string pakPath)
         {
             Reads++;

@@ -379,6 +379,72 @@ public class PakMediaReaderTests
     }
 
     [SamplePaksFact]
+    public void Going_back_to_the_start_gives_exactly_the_audio_of_the_start_in_every_part()
+    {
+        // NVorbis seeks to the start a few hundred to a couple of thousand frames off, by a different amount in each part,
+        // which put the parts of a song out of step with each other every time it restarted (the loop, Stop, the riser).
+        foreach (var pak in SamplePaks().Take(8))
+        foreach (var stem in Reader.ReadAudio(pak, null).Stems)
+        {
+            using var fresh = new VorbisStemSource(stem.OggData);
+            using var restarted = new VorbisStemSource(stem.OggData);
+            var expected = new float[fresh.SampleRate * fresh.Channels];
+            var actual = new float[expected.Length];
+            fresh.Read(expected, 0, expected.Length);
+
+            restarted.PositionFrames = fresh.LengthFrames / 2;
+            restarted.Read(new float[restarted.SampleRate * restarted.Channels], 0, restarted.SampleRate * restarted.Channels);
+            restarted.PositionFrames = 0;
+            restarted.Read(actual, 0, actual.Length);
+
+            Assert.True(expected.AsSpan().SequenceEqual(actual), $"{Path.GetFileName(pak)} {stem.Kind} ({stem.ZoneLabel}) does not restart exactly");
+        }
+    }
+
+    [SamplePaksFact]
+    public void Every_riser_is_a_few_seconds_of_audio_or_reported_missing()
+    {
+        var metadata = new CueSongMetadataReader(PatchedDlcCatalog.LoadEmbedded());
+        var withRiser = 0;
+        foreach (var pak in SamplePaks())
+        {
+            SongAudio riser;
+            try
+            {
+                riser = Reader.ReadRiser(pak, metadata.Read(pak).Metadata.Mode);
+            }
+            catch (InvalidDataException ex)
+            {
+                // Some custom songs ship their riser files with no sound in them.
+                Assert.Equal("This song has no riser.", ex.Message);
+                continue;
+            }
+
+            withRiser++;
+            Assert.NotEmpty(riser.Stems);
+            var kinds = riser.Stems.Select(s => s.Kind).Distinct().ToList();
+            Assert.Equal(kinds.Order(), kinds);
+            foreach (var stem in riser.Stems)
+            {
+                Assert.Equal("OggS", Encoding.ASCII.GetString(stem.OggData, 0, 4));
+                using var vorbis = new VorbisReader(new MemoryStream(stem.OggData), true);
+                // Usually under 15 s; a few custom songs put a long clip there, so only the extremes are checked.
+                Assert.InRange(vorbis.TotalTime.TotalSeconds, 1, 120);
+            }
+
+            // The parts mix into sound (a riser can start very quietly, so the whole of it is looked at).
+            using var mixer = new StemMixer(riser.Stems.Select(s => (s.Kind, (IStemSource)new VorbisStemSource(s.OggData))).ToList());
+            var buffer = new float[mixer.SampleRate * StemMixer.OutputChannels];
+            float peak = 0;
+            int read;
+            while ((read = mixer.Read(buffer, 0, buffer.Length)) > 0)
+                peak = Math.Max(peak, buffer.Take(read).Max(Math.Abs));
+            Assert.True(peak > 0.001, $"{Path.GetFileName(pak)} is silent");
+        }
+        Assert.True(withRiser > 0, "None of the sample songs has a riser.");
+    }
+
+    [SamplePaksFact]
     public void Decoded_parts_mix_into_audible_sound()
     {
         var pak = SamplePaks().First();
@@ -427,6 +493,7 @@ public class PakMediaReaderTests
         {
             File.WriteAllText(path, "not a pak");
             Assert.Throws<InvalidDataException>(() => Reader.ReadAudio(path, null));
+            Assert.Throws<InvalidDataException>(() => Reader.ReadRiser(path, null));
             Assert.Throws<InvalidDataException>(() => Reader.ReadAlbumArt(path));
         }
         finally
