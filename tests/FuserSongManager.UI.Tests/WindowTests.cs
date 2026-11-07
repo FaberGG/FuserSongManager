@@ -91,6 +91,19 @@ public sealed class WindowTests : IDisposable
         window.KeyPressQwerty(PhysicalKey.Z, RawInputModifiers.None);
         Assert.False(viewModel.IsAutoplayOn);
 
+        // D shows or hides the key and BPM over each title; the bottom bar shows the shortcut.
+        var detail = () => Tile(window, "brightside_P").GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "A Minor · 148 BPM");
+        Assert.True(detail().IsVisible);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Key & BPM: ");
+        window.KeyPressQwerty(PhysicalKey.D, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(viewModel.ShowTileDetails);
+        Assert.False(detail().IsVisible);
+        Save(window, "main-window-details-off");
+        window.KeyPressQwerty(PhysicalKey.D, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(detail().IsVisible);
+
         window.KeyPressQwerty(PhysicalKey.A, RawInputModifiers.Control);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(5, viewModel.Selection.Count);

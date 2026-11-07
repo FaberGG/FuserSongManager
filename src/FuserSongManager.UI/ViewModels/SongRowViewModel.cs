@@ -57,6 +57,15 @@ public sealed partial class SongRowViewModel(Song song) : ViewModelBase
     /// <summary>"Rock · 2003" for the tile's hover line; empty parts are left out.</summary>
     public string GenreAndYear => string.Join(" · ", new[] { Genre, Year?.ToString() }.Where(s => !string.IsNullOrEmpty(s)));
 
+    /// <summary>"G♭ Major · 124 BPM" for the line over the tile's title; parts that could not be read are left out.</summary>
+    public string KeyAndBpm => string.Join(" · ", new[]
+    {
+        $"{Key} {Mode}".Trim(),
+        Bpm is { } bpm ? $"{bpm} BPM" : "",
+    }.Where(s => s.Length > 0));
+
+    public bool HasKeyAndBpm => KeyAndBpm.Length > 0;
+
     /// <summary>The four parts' instruments, or none when the pak has not been read for them yet.</summary>
     public IReadOnlyList<PartIcon> Parts =>
         Song.Instruments is { } instruments && instruments != SongInstruments.Unknown

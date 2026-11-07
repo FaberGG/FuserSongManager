@@ -230,6 +230,16 @@
                                                         </Border>
 
                                                         <StackPanel VerticalAlignment="Bottom" Margin="8,0,8,10" Spacing="1">
+                                                            <!-- Key and BPM, in the style of the genre and year line; D shows or hides it. -->
+                                                            <TextBlock Text="{Binding KeyAndBpm}" FontSize="14" TextAlignment="Center" Foreground="#DDDDDD"
+                                                                       TextTrimming="CharacterEllipsis">
+                                                                <TextBlock.IsVisible>
+                                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                        <Binding Path="HasKeyAndBpm" />
+                                                                        <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).ShowTileDetails" />
+                                                                    </MultiBinding>
+                                                                </TextBlock.IsVisible>
+                                                            </TextBlock>
                                                             <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="ExtraBold" TextAlignment="Center"
                                                                        TextTrimming="CharacterEllipsis" />
                                                             <TextBlock Text="{Binding Artist}" FontSize="15" FontWeight="Medium" TextAlignment="Center"
@@ -484,6 +494,15 @@
                             <TextBlock Text="Autoplay: " VerticalAlignment="Center" />
                             <TextBlock Text="On" VerticalAlignment="Center" IsVisible="{Binding IsAutoplayOn}" />
                             <TextBlock Text="Off" VerticalAlignment="Center" IsVisible="{Binding !IsAutoplayOn}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="key" Command="{Binding ToggleTileDetailsCommand}" Focusable="False"
+                            ToolTip.Tip="Show the key and BPM over each song's title">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Classes="keycap" Classes.on="{Binding ShowTileDetails}"><TextBlock Text="D" /></Border>
+                            <TextBlock Text="Key &amp; BPM: " VerticalAlignment="Center" />
+                            <TextBlock Text="On" VerticalAlignment="Center" IsVisible="{Binding ShowTileDetails}" />
+                            <TextBlock Text="Off" VerticalAlignment="Center" IsVisible="{Binding !ShowTileDetails}" />
                         </StackPanel>
                     </Button>
                     <Button Classes="key" Command="{Binding PlayPauseCommand}" Focusable="False">

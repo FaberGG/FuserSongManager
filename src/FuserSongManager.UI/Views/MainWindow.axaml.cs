@@ -129,6 +129,9 @@ public partial class MainWindow : Window
             case Key.Z when !control:
                 viewModel.ToggleAutoplayCommand.Execute(null);
                 break;
+            case Key.D when !control:
+                viewModel.ToggleTileDetailsCommand.Execute(null);
+                break;
             case Key.Space:
                 Run(viewModel.PlayPauseCommand);
                 break;

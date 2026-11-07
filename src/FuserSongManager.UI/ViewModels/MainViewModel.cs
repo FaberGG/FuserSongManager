@@ -125,6 +125,7 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
         SelectMode(null);
         SearchText = "";
         IsAutoplayOn = services.Settings.AutoplayPreview;
+        ShowTileDetails = services.Settings.ShowTileDetails;
     }
 
     public ThumbnailLoader Thumbnails { get; }
@@ -569,8 +570,32 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleAutoplay() => IsAutoplayOn = !IsAutoplayOn;
 
+    // ---- Tile details ----------------------------------------------------------------------
+
+    /// <summary>Shows the key and BPM over each tile's title (D). Remembered between sessions.</summary>
+    [ObservableProperty]
+    public partial bool ShowTileDetails { get; set; }
+
+    partial void OnShowTileDetailsChanged(bool value)
+    {
+        if (_services.Settings.ShowTileDetails == value)
+            return;
+        try
+        {
+            _services.SaveSettings(_services.Settings with { ShowTileDetails = value });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not save the tile details setting");
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleTileDetails() => ShowTileDetails = !ShowTileDetails;
+
     public const string ShortcutsHelp = """
         Z  Turn autoplay on or off: the song plays as soon as you select it
+        D  Show or hide the key and BPM on the song tiles
         Space  Play or pause the selected song
         Enter  Enable or disable the selected songs
         Arrow keys  Move between songs

@@ -150,6 +150,37 @@ public sealed class LibraryScreenTests : IDisposable
         Assert.Equal(ThumbnailLoaderWidth, Row(vm, "a_P").Thumbnail!.PixelSize.Width);
         Assert.Equal([StemKind.Beat, StemKind.Bass, StemKind.Loop, StemKind.Lead], Row(vm, "a_P").Parts.Select(p => p.Kind));
         Assert.Equal("Rock · 2000", Row(vm, "a_P").GenreAndYear);
+        // Key and BPM, joined like genre and year.
+        Assert.Equal("A Minor · 120 BPM", Row(vm, "a_P").KeyAndBpm);
+    }
+
+    [Theory]
+    [InlineData(MusicalKey.Gb, SongMode.Major, 124, "G♭ Major · 124 BPM")]
+    [InlineData(MusicalKey.C, null, 90, "C · 90 BPM")]
+    [InlineData(null, null, 90, "90 BPM")]
+    [InlineData(MusicalKey.B, SongMode.Minor, null, "B Minor")]
+    [InlineData(null, null, null, "")]   // nothing read: the line is not shown
+    public void Key_and_bpm_line_leaves_out_what_could_not_be_read(MusicalKey? key, SongMode? mode, int? bpm, string expected)
+    {
+        var row = new SongRowViewModel(new Song { FileName = "x_P", Metadata = SongMetadata.Empty with { Key = key, Mode = mode, Bpm = bpm } });
+
+        Assert.Equal(expected, row.KeyAndBpm);
+        Assert.Equal(expected.Length > 0, row.HasKeyAndBpm);
+    }
+
+    [AvaloniaFact]
+    public async Task Tile_details_toggle_is_remembered()
+    {
+        using (var vm = await StartAsync())
+        {
+            Assert.True(vm.ShowTileDetails);   // on by default
+            vm.ToggleTileDetailsCommand.Execute(null);
+            Assert.False(vm.ShowTileDetails);
+        }
+
+        Assert.False(_library.Settings.Current.ShowTileDetails);
+        using var again = await StartAsync();
+        Assert.False(again.ShowTileDetails);
     }
 
     // The fake art is 64 px, so decoding "to width" scales it up to the tile width.
