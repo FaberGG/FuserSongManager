@@ -379,6 +379,29 @@ public class PakMediaReaderTests
     }
 
     [SamplePaksFact]
+    public void Going_back_to_the_start_gives_exactly_the_audio_of_the_start_in_every_part()
+    {
+        // NVorbis seeks to the start a few hundred to a couple of thousand frames off, by a different amount in each part,
+        // which put the parts of a song out of step with each other every time it restarted (the loop, Stop, the riser).
+        foreach (var pak in SamplePaks().Take(8))
+        foreach (var stem in Reader.ReadAudio(pak, null).Stems)
+        {
+            using var fresh = new VorbisStemSource(stem.OggData);
+            using var restarted = new VorbisStemSource(stem.OggData);
+            var expected = new float[fresh.SampleRate * fresh.Channels];
+            var actual = new float[expected.Length];
+            fresh.Read(expected, 0, expected.Length);
+
+            restarted.PositionFrames = fresh.LengthFrames / 2;
+            restarted.Read(new float[restarted.SampleRate * restarted.Channels], 0, restarted.SampleRate * restarted.Channels);
+            restarted.PositionFrames = 0;
+            restarted.Read(actual, 0, actual.Length);
+
+            Assert.True(expected.AsSpan().SequenceEqual(actual), $"{Path.GetFileName(pak)} {stem.Kind} ({stem.ZoneLabel}) does not restart exactly");
+        }
+    }
+
+    [SamplePaksFact]
     public void Every_riser_is_a_few_seconds_of_audio_or_reported_missing()
     {
         var metadata = new CueSongMetadataReader(PatchedDlcCatalog.LoadEmbedded());

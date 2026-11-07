@@ -5,10 +5,20 @@ using NVorbis;
 
 namespace FuserSongManager.Infrastructure.Audio;
 
-/// <summary>Ogg Vorbis part decoded on the fly with NVorbis (nothing is written to disk).</summary>
+/// <summary>
+/// Ogg Vorbis part decoded on the fly with NVorbis (nothing is written to disk).
+/// <para>
+/// Going back to the start is exact; going anywhere else is not. NVorbis lands a few hundred to a couple of
+/// thousand frames (11 to 44 ms) off the frame asked for in these Oggs, and by a different amount in each part.
+/// That is fine for dragging the playhead, but not for restarting the song, where it would put the parts out of
+/// step with each other: the start is therefore reached by opening the stream again, which is exact.
+/// </para>
+/// </summary>
 public sealed class VorbisStemSource(byte[] ogg) : IStemSource
 {
-    private readonly VorbisReader _reader = new(new MemoryStream(ogg, writable: false), closeOnDispose: true);
+    private VorbisReader _reader = Open(ogg);
+
+    private static VorbisReader Open(byte[] ogg) => new(new MemoryStream(ogg, writable: false), closeOnDispose: true);
 
     public int SampleRate => _reader.SampleRate;
     public int Channels => _reader.Channels;
@@ -22,6 +32,14 @@ public sealed class VorbisStemSource(byte[] ogg) : IStemSource
 
     private void Seek(long frame)
     {
+        if (frame == 0)
+        {
+            // Decoding from the beginning is the only exact way to be at the beginning.
+            _reader.Dispose();
+            _reader = Open(ogg);
+            return;
+        }
+
         try
         {
             _reader.SamplePosition = frame;
