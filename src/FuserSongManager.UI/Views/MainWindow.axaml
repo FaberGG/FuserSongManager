@@ -271,7 +271,10 @@
                                                                         Command="{Binding Riser.PlayCommand}" ToolTip.Tip="{Binding Riser.ToolTip}"
                                                                         IsVisible="{Binding Riser, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                                         AutomationProperties.Name="{Binding Riser.ToolTip}">
-                                                                    <Path Data="{StaticResource Ui.Riser}" Fill="{Binding $parent[Button].Foreground}" Width="28" Height="28" Stretch="Uniform" />
+                                                                    <!-- Only the width is set: the drawing keeps its proportions (28x25) and the button centres it. A fixed 28x28 box would
+                                                                         put it at the top of the box, 1.5 px too high. The three nodes on the left weigh more than the arrow, so
+                                                                         it also sits 1.5 px to the right to look centred, not just to be. -->
+                                                                    <Path Data="{StaticResource Ui.Riser}" Fill="{Binding $parent[Button].Foreground}" Width="28" Stretch="Uniform" Margin="3,0,0,0" />
                                                                 </Button>
                                                             </Grid>
                                                             <!-- What the song does while the riser comes in: the moves DJs use to go from one track to the next. -->

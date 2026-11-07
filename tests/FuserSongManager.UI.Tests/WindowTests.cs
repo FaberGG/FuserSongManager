@@ -223,6 +223,14 @@ public sealed class WindowTests : IDisposable
         Assert.Equal(play.TranslatePoint(new Point(0, 28), window)!.Value.Y, button.TranslatePoint(new Point(0, 24), window)!.Value.Y, 1);   // same row, centred
         Save(window, "riser-idle");
 
+        // The icon is centred in the disc: exactly in height, and in width shifted a little to the right, because the
+        // three nodes on its left weigh more than the arrow.
+        var glyph = button.GetVisualDescendants().OfType<GlyphPath>().Single();
+        var glyphCentre = glyph.TranslatePoint(new Point(glyph.Bounds.Width / 2, glyph.Bounds.Height / 2), window)!.Value;
+        var discCentre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        Assert.Equal(discCentre.Y, glyphCentre.Y, 0.5);
+        Assert.InRange(glyphCentre.X - discCentre.X, 0.5, 2.5);
+
         window.MouseMove(button.TranslatePoint(new Point(24, 24), window)!.Value);
         Dispatcher.UIThread.RunJobs();
         Assert.True(button.IsPointerOver);
