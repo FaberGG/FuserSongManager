@@ -48,7 +48,8 @@ The executable is not signed, so the first time Windows SmartScreen may say it p
 
 Everything lives in `%LocalAppData%\FuserSongManager`: `settings.json`, the library database `songs.sqlite`, daily
 `logs\` (Settings → Open log folder) and an `art\` cache of album art (safe to delete). Your songs stay in the game's
-`Fuser\Content\Paks\custom_songs` and `disabled_songs` folders.
+`Fuser\Content\Paks\custom_songs` and `Fuser\Content\disabled_songs` folders (disabled songs live outside `Paks`
+because Fuser loads every `.pak` under `Paks`).
 
 ## Building from source
 

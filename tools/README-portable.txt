@@ -34,7 +34,7 @@ Where your data is
     art\            album art taken from the paks, so it shows instantly next time (safe to delete)
 
 Your songs stay where they are: Fuser\Content\Paks\custom_songs (enabled) and
-Fuser\Content\Paks\disabled_songs (disabled).
+Fuser\Content\disabled_songs (disabled, outside Paks so Fuser does not load them).
 
 Keyboard
 --------
