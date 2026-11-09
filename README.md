@@ -4,7 +4,7 @@ Manage your library of **FUSER custom songs** in a look inspired by the game's o
 album art, listen to it in a loop with each part on its own disc, rate it and take notes, enable or disable songs, import
 new ones straight from the archives you download, and start the game.
 
-![The library: album art grid and the selected song's panel with the looping preview](docs/images/library.png)
+![The library in action: album art grid, filters, and the song panel with the preview and the riser](docs/images/library.gif)
 
 ## Download
 
